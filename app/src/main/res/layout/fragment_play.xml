@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:padding="8dp"
+    android:background="@android:color/white">
+
+    <TextView
+        android:id="@+id/current_path"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="Current path"
+        android:textSize="14sp"
+        android:padding="8dp"
+        android:background="#f0f0f0"
+        android:singleLine="true"
+        android:ellipsize="start" />
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="horizontal"
+        android:padding="8dp"
+        android:gravity="center_vertical">
+
+        <Button
+            android:id="@+id/navigate_up"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="↑ Up"
+            android:layout_weight="0" />
+
+        <TextView
+            android:id="@+id/now_playing"
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:gravity="center"
+            android:singleLine="true"
+            android:ellipsize="marquee"
+            android:marqueeRepeatLimit="marquee_forever"
+            android:padding="8dp"
+            android:textColor="@android:color/holo_blue_dark" />
+
+        <ImageButton
+            android:id="@+id/play_pause"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:src="@android:drawable/ic_media_play"
+            android:background="?attr/selectableItemBackgroundBorderless" />
+
+    </LinearLayout>
+
+    <!-- Tag selector (initially hidden) -->
+    <LinearLayout
+        android:id="@+id/tag_selector"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="8dp"
+        android:background="#f5f5f5"
+        android:visibility="gone">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Select tags:"
+            android:textStyle="bold"
+            android:padding="4dp" />
+
+    </LinearLayout>
+
+    <ListView
+        android:id="@+id/file_list"
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:divider="@null"
+        android:dividerHeight="1dp" />
+
+</LinearLayout>
