@@ -3,6 +3,7 @@ package com.german.learner.utils;
 import android.content.Context;
 import android.os.Environment;
 import android.util.Log;
+import android.view.View;
 import android.widget.ListView;
 
 import com.google.gson.Gson;
@@ -215,7 +216,13 @@ public class StateManager {
     }
 
     public String getPrimaryRootPath() {
-        return currentState.getSettings().getPrimaryRootPath();
+        String path = currentState.getSettings().getPrimaryRootPath();
+        if (path == null || path.isEmpty()) {
+            // Return a sensible default
+            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A1";
+            Log.d(TAG, "Primary path was empty, using default: " + path);
+        }
+        return path;
     }
 
     public void setSecondaryRootPath(String path) {
@@ -224,7 +231,12 @@ public class StateManager {
     }
 
     public String getSecondaryRootPath() {
-        return currentState.getSettings().getSecondaryRootPath();
+        String path = currentState.getSettings().getSecondaryRootPath();
+        if (path == null || path.isEmpty()) {
+            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A2";
+            Log.d(TAG, "Secondary path was empty, using default: " + path);
+        }
+        return path;
     }
 
     public boolean isAutoResumePlayback() {

@@ -1,8 +1,13 @@
 package com.german.learner.fragments;
 
+import android.Manifest;
+import android.content.pm.PackageManager;
 import android.media.MediaPlayer;
+import android.os.Build;
 import android.os.Bundle;
+import android.os.Environment;
 import android.os.Handler;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -16,6 +21,7 @@ import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
+import androidx.core.content.ContextCompat;
 import androidx.fragment.app.Fragment;
 
 import com.german.learner.MainActivity;
@@ -84,9 +90,12 @@ public class PlayFragment extends Fragment {
             startPath = stateManager.getSecondaryRootPath();
         }
         navigateToPath(startPath);
+        Log.d("PLAY_DEBUG", "Navigated to: " + startPath);
 
         // Restore playing state
         restorePlayingState();
+
+        debugStorageAccess(startPath);
 
         return view;
     }
@@ -243,7 +252,7 @@ public class PlayFragment extends Fragment {
         tagSelectorLayout.setVisibility(View.GONE);
     }
 
-    private void showTagSelector(File file) {
+    public void showTagSelector(File file) {
         selectedFileForTagging = file;
         tagSelectorLayout.setVisibility(View.VISIBLE);
 
@@ -287,87 +296,113 @@ public class PlayFragment extends Fragment {
     private void loadFiles(File directory) {
         fileList.clear();
 
-        File[] files = directory.listFiles(new FileFilter() {
+        Log.d("PLAY_DEBUG", "========== LOADING FOLDER ==========");
+        Log.d("PLAY_DEBUG", "Loading directory: " + directory.getAbsolutePath());
+        Log.d("PLAY_DEBUG", "Directory exists: " + directory.exists());
+        Log.d("PLAY_DEBUG", "Is directory: " + directory.isDirectory());
+        Log.d("PLAY_DEBUG", "Can read: " + directory.canRead());
+
+        if (!directory.exists()) {
+            Log.e("PLAY_DEBUG", "Directory does not exist!");
+            Toast.makeText(getContext(), "Directory does not exist: " + directory.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            adapter.notifyDataSetChanged();
+            return;
+        }
+
+        if (!directory.isDirectory()) {
+            Log.e("PLAY_DEBUG", "Path is not a directory!");
+            Toast.makeText(getContext(), "Not a directory: " + directory.getAbsolutePath(), Toast.LENGTH_LONG).show();
+            adapter.notifyDataSetChanged();
+            return;
+        }
+
+        File[] files = directory.listFiles();
+
+        if (files == null) {
+            Log.e("PLAY_DEBUG", "listFiles() returned NULL! This usually means permission denied.");
+
+            // Check permission specifically
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+                boolean hasManageStorage = Environment.isExternalStorageManager();
+                Log.d("PLAY_DEBUG", "Has MANAGE_EXTERNAL_STORAGE permission: " + hasManageStorage);
+                if (!hasManageStorage) {
+                    Toast.makeText(getContext(), "Need MANAGE_EXTERNAL_STORAGE permission", Toast.LENGTH_LONG).show();
+                }
+            } else {
+                int permission = ContextCompat.checkSelfPermission(requireContext(),
+                        Manifest.permission.READ_EXTERNAL_STORAGE);
+                Log.d("PLAY_DEBUG", "READ_EXTERNAL_STORAGE permission: " +
+                        (permission == PackageManager.PERMISSION_GRANTED ? "GRANTED" : "DENIED"));
+            }
+
+            adapter.notifyDataSetChanged();
+            return;
+        }
+
+        Log.d("PLAY_DEBUG", "Total items in directory: " + files.length);
+
+        // Filter and sort
+        List<File> filteredList = new ArrayList<>();
+        for (File file : files) {
+            if (file.isDirectory()) {
+                filteredList.add(file);
+                Log.d("PLAY_DEBUG", "Found directory: " + file.getName());
+            } else if (file.isFile()) {
+                String name = file.getName().toLowerCase();
+                if (name.endsWith(".mp3")) {
+                    filteredList.add(file);
+                    Log.d("PLAY_DEBUG", "Found MP3: " + file.getName());
+                } else {
+                    Log.d("PLAY_DEBUG", "Ignoring non-MP3 file: " + file.getName());
+                }
+            }
+        }
+
+        // Sort: directories first, then files alphabetically
+        Collections.sort(filteredList, new Comparator<File>() {
             @Override
-            public boolean accept(File file) {
-                return file.isDirectory() ||
-                        (file.isFile() && file.getName().toLowerCase().endsWith(".mp3"));
+            public int compare(File f1, File f2) {
+                if (f1.isDirectory() && !f2.isDirectory()) return -1;
+                if (!f1.isDirectory() && f2.isDirectory()) return 1;
+                return f1.getName().compareToIgnoreCase(f2.getName());
             }
         });
 
-        if (files != null) {
-            Arrays.sort(files, new Comparator<File>() {
-                @Override
-                public int compare(File f1, File f2) {
-                    if (f1.isDirectory() && !f2.isDirectory()) return -1;
-                    if (!f1.isDirectory() && f2.isDirectory()) return 1;
-                    return f1.getName().compareToIgnoreCase(f2.getName());
-                }
-            });
-
-            Collections.addAll(fileList, files);
-        }
+        fileList.addAll(filteredList);
+        Log.d("PLAY_DEBUG", "Final list size: " + fileList.size());
+        Log.d("PLAY_DEBUG", "=====================================");
 
         adapter.notifyDataSetChanged();
         navigateUpButton.setEnabled(!directory.getAbsolutePath().equals("/"));
+
+        if (fileList.isEmpty()) {
+            Toast.makeText(getContext(), "No MP3 files or folders found in this directory", Toast.LENGTH_LONG).show();
+        }
     }
 
     private boolean isAudioFile(File file) {
         return file.isFile() && file.getName().toLowerCase().endsWith(".mp3");
     }
 
-    private void playAudio(File file) {
+    public void playAudio(File file) {
         try {
             if (mediaPlayer != null) {
                 mediaPlayer.release();
-                handler.removeCallbacks(updatePositionRunnable);
             }
 
             mediaPlayer = new MediaPlayer();
+
+            // This works for BOTH internal storage AND SD card!
             mediaPlayer.setDataSource(file.getAbsolutePath());
             mediaPlayer.prepare();
-
-            // Restore position if we've played this before
-            TrackInfo info = stateManager.getTrackInfo(file.getAbsolutePath());
-            if (info != null && info.getLastPlayedPosition() > 0) {
-                mediaPlayer.seekTo((int) info.getLastPlayedPosition());
-            }
-
             mediaPlayer.start();
 
-            currentlyPlayingFile = file;
-            isPlaying = true;
-
-            nowPlayingTextView.setText("Now playing: " + file.getName());
-            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-
-            // Update play count
-            stateManager.incrementPlayCount(file.getAbsolutePath());
-            stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), file.getName());
-
-            // Start position updates
-            handler.post(updatePositionRunnable);
-
-            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    isPlaying = false;
-                    nowPlayingTextView.setText("Finished: " + file.getName());
-                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                    handler.removeCallbacks(updatePositionRunnable);
-
-                    // Clear playback state when finished
-                    stateManager.updatePlaybackState(file.getAbsolutePath(), 0, false);
-                    stateManager.updateTrackPosition(file.getAbsolutePath(), 0);
-                }
-            });
-
+            // ... rest of your code
         } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(requireContext(), "Error playing audio", Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Error playing: " + e.getMessage(), Toast.LENGTH_SHORT).show();
         }
     }
-
     private void pauseAudio() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
@@ -476,5 +511,76 @@ public class PlayFragment extends Fragment {
         if (currentDirectory != null) {
             loadFiles(currentDirectory);
         }
+
+    }
+
+    private void debugStorageAccess(String path) {
+        Log.d("PLAY_DEBUG", "========== STORAGE ACCESS DEBUG ==========");
+
+        // 1. Check if we have permissions
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
+            boolean hasManageStorage = Environment.isExternalStorageManager();
+            Log.d("PLAY_DEBUG", "Has MANAGE_EXTERNAL_STORAGE: " + hasManageStorage);
+        } else {
+            int permission = ContextCompat.checkSelfPermission(requireContext(),
+                    Manifest.permission.READ_EXTERNAL_STORAGE);
+            Log.d("PLAY_DEBUG", "READ_EXTERNAL_STORAGE: " +
+                    (permission == PackageManager.PERMISSION_GRANTED ? "GRANTED" : "DENIED"));
+        }
+
+        // 2. Check all storage locations
+        File[] externalDirs = requireContext().getExternalFilesDirs(null);
+        Log.d("PLAY_DEBUG", "Number of storage locations: " + externalDirs.length);
+
+        for (int i = 0; i < externalDirs.length; i++) {
+            if (externalDirs[i] != null) {
+                String fullPath = externalDirs[i].getAbsolutePath();
+                Log.d("PLAY_DEBUG", "Storage " + i + ": " + fullPath);
+
+                // Try to get root
+                if (fullPath.contains("/Android")) {
+                    String root = fullPath.substring(0, fullPath.indexOf("/Android"));
+                    Log.d("PLAY_DEBUG", "  Root " + i + ": " + root);
+
+                    // Check if root is accessible
+                    File rootFile = new File(root);
+                    Log.d("PLAY_DEBUG", "  Root exists: " + rootFile.exists());
+                    Log.d("PLAY_DEBUG", "  Root can read: " + rootFile.canRead());
+                    Log.d("PLAY_DEBUG", "  Root can list: " + (rootFile.list() != null ? "YES" : "NO"));
+                }
+            }
+        }
+
+        // 3. Check the specific path we're trying to access
+        File targetDir = new File(path);
+        Log.d("PLAY_DEBUG", "Target path: " + path);
+        Log.d("PLAY_DEBUG", "Target exists: " + targetDir.exists());
+        Log.d("PLAY_DEBUG", "Target is directory: " + targetDir.isDirectory());
+        Log.d("PLAY_DEBUG", "Target can read: " + targetDir.canRead());
+
+        if (targetDir.exists() && targetDir.isDirectory()) {
+            String[] contents = targetDir.list();
+            Log.d("PLAY_DEBUG", "Target contents count: " + (contents != null ? contents.length : "null"));
+            if (contents != null) {
+                for (int i = 0; i < Math.min(contents.length, 5); i++) {
+                    Log.d("PLAY_DEBUG", "  Item " + i + ": " + contents[i]);
+                }
+            }
+        }
+
+        // 4. Check if we can create a test file
+        try {
+            File testFile = new File(targetDir, "test_write_permission.txt");
+            if (testFile.createNewFile()) {
+                Log.d("PLAY_DEBUG", "Can write to target directory: YES");
+                testFile.delete();
+            } else {
+                Log.d("PLAY_DEBUG", "Can write to target directory: NO");
+            }
+        } catch (Exception e) {
+            Log.d("PLAY_DEBUG", "Can write to target directory: EXCEPTION - " + e.getMessage());
+        }
+
+        Log.d("PLAY_DEBUG", "========== END DEBUG ==========");
     }
 }

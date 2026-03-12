@@ -1,7 +1,12 @@
 package com.german.learner.fragments;
 
+import com.german.learner.R;
+
+import android.content.Intent;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Environment;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -10,6 +15,8 @@ import android.widget.EditText;
 import android.widget.TextView;
 import android.widget.Toast;
 
+import androidx.activity.result.ActivityResultLauncher;
+import androidx.activity.result.contract.ActivityResultContracts;
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
@@ -32,7 +39,45 @@ public class SettingsFragment extends Fragment {
     private SwitchMaterial autoResumeSwitch;
     private TextView storageInfoTextView;
 
+    private Button detectcardbutton;
     private StateManager stateManager;
+    private boolean isSelectingA1 = true;
+
+    // Modern Activity Result API
+// Modern Activity Result API
+// Simple directory picker that returns a file path
+    private final ActivityResultLauncher<Intent> directoryPickerLauncher =
+            registerForActivityResult(new ActivityResultContracts.StartActivityForResult(),
+                    result -> {
+                        if (result.getResultCode() == getActivity().RESULT_OK && result.getData() != null) {
+                            Uri uri = result.getData().getData();
+                            if (uri != null) {
+                                // Take persistable permission
+                                getActivity().getContentResolver().takePersistableUriPermission(uri,
+                                        Intent.FLAG_GRANT_READ_URI_PERMISSION);
+
+                                // Get the path from URI - simplified version
+                                String path = uri.getPath();
+                                if (path != null) {
+                                    // Extract the actual path
+                                    // Format: /tree/primary:A1
+                                    if (path.contains(":")) {
+                                        String[] parts = path.split(":");
+                                        if (parts.length >= 2) {
+                                            String folderName = parts[1];
+                                            path = "/storage/emulated/0/" + folderName;
+
+                                            if (isSelectingA1) {
+                                                a1PathEditText.setText(path);
+                                            } else {
+                                                a2PathEditText.setText(path);
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
 
     @Nullable
     @Override
@@ -50,6 +95,7 @@ public class SettingsFragment extends Fragment {
         clearDataButton = view.findViewById(R.id.clear_data);
         autoResumeSwitch = view.findViewById(R.id.auto_resume);
         storageInfoTextView = view.findViewById(R.id.storage_info);
+        detectcardbutton = view.findViewById(R.id.detect_sdcard);
 
         loadSettings();
         setupListeners();
@@ -58,28 +104,28 @@ public class SettingsFragment extends Fragment {
         return view;
     }
 
+
     private void loadSettings() {
         a1PathEditText.setText(stateManager.getPrimaryRootPath());
         a2PathEditText.setText(stateManager.getSecondaryRootPath());
         autoResumeSwitch.setChecked(stateManager.isAutoResumePlayback());
     }
 
+
     private void setupListeners() {
         browseA1Button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                // In a real app, implement directory picker
-                // For now, just set to default A1 path
-                String defaultPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A1";
-                a1PathEditText.setText(defaultPath);
+                isSelectingA1 = true;
+                openDirectoryPicker();
             }
         });
 
         browseA2Button.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                String defaultPath = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A2";
-                a2PathEditText.setText(defaultPath);
+                isSelectingA1 = false;
+                openDirectoryPicker();
             }
         });
 
@@ -89,33 +135,37 @@ public class SettingsFragment extends Fragment {
                 String a1Path = a1PathEditText.getText().toString().trim();
                 String a2Path = a2PathEditText.getText().toString().trim();
 
-                boolean pathsValid = true;
+                Log.d("SETTINGS", "Saving A1 path: " + a1Path);
+                Log.d("SETTINGS", "Saving A2 path: " + a2Path);
 
                 if (!a1Path.isEmpty()) {
                     File a1Dir = new File(a1Path);
-                    if (!a1Dir.exists()) {
-                        a1PathEditText.setError("Directory does not exist");
-                        pathsValid = false;
-                    } else {
+                    if (a1Dir.exists()) {
                         stateManager.setPrimaryRootPath(a1Path);
+                        Log.d("SETTINGS", "A1 path saved to StateManager");
+                    } else {
+                        Log.d("SETTINGS", "A1 directory does NOT exist: " + a1Path);
+                        Toast.makeText(getContext(), "A1 directory does not exist", Toast.LENGTH_LONG).show();
                     }
                 }
 
                 if (!a2Path.isEmpty()) {
                     File a2Dir = new File(a2Path);
-                    if (!a2Dir.exists()) {
-                        a2PathEditText.setError("Directory does not exist");
-                        pathsValid = false;
-                    } else {
+                    if (a2Dir.exists()) {
                         stateManager.setSecondaryRootPath(a2Path);
+                        Log.d("SETTINGS", "A2 path saved to StateManager");
+                    } else {
+                        Log.d("SETTINGS", "A2 directory does NOT exist: " + a2Path);
+                        Toast.makeText(getContext(), "A2 directory does not exist", Toast.LENGTH_LONG).show();
                     }
                 }
 
-                stateManager.setAutoResumePlayback(autoResumeSwitch.isChecked());
+                // Verify they were saved
+                Log.d("SETTINGS", "After save - Primary: " + stateManager.getPrimaryRootPath());
+                Log.d("SETTINGS", "After save - Secondary: " + stateManager.getSecondaryRootPath());
 
-                if (pathsValid) {
-                    Toast.makeText(getContext(), "Settings saved", Toast.LENGTH_SHORT).show();
-                }
+                stateManager.setAutoResumePlayback(autoResumeSwitch.isChecked());
+                Toast.makeText(getContext(), "Settings saved", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -134,6 +184,19 @@ public class SettingsFragment extends Fragment {
                         .show();
             }
         });
+
+        // Add SD card detection button listener
+        detectcardbutton.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                detectAndShowSdCardPaths();
+            }
+        });
+    }
+
+    private void openDirectoryPicker() {
+        Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        directoryPickerLauncher.launch(intent);
     }
 
     private void updateStorageInfo() {
@@ -158,5 +221,73 @@ public class SettingsFragment extends Fragment {
         } else {
             return String.format(java.util.Locale.getDefault(), "%.1f GB", size / (1024.0 * 1024.0 * 1024.0));
         }
+    }
+
+    /**
+     * Detect SD card and show paths to user
+     */
+    private void detectAndShowSdCardPaths() {
+        try {
+            // Get all external storage directories
+            File[] externalDirs = requireContext().getExternalFilesDirs(null);
+
+            StringBuilder message = new StringBuilder("Detected Storage Locations:\n\n");
+
+            for (int i = 0; i < externalDirs.length; i++) {
+                if (externalDirs[i] != null) {
+                    String fullPath = externalDirs[i].getAbsolutePath();
+                    message.append("Storage ").append(i).append(": ").append(fullPath).append("\n");
+
+                    // Try to get root path (remove /Android/data/...)
+                    if (fullPath.contains("/Android")) {
+                        String rootPath = fullPath.substring(0, fullPath.indexOf("/Android"));
+                        message.append("   Root: ").append(rootPath).append("\n");
+
+                        // If this is SD card (usually index 1), offer to use it
+                        if (i == 1) {
+                            message.append("\n✅ SD Card detected!\n");
+                            message.append("Suggested A1 path: ").append(rootPath).append("/A1\n");
+                            message.append("Suggested A2 path: ").append(rootPath).append("/A2\n");
+
+                            // Ask user if they want to use these paths
+                            suggestSdCardPaths(rootPath);
+                        }
+                    }
+                    message.append("\n");
+                }
+            }
+
+            // Show all detected storage
+            new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                    .setTitle("Storage Detection")
+                    .setMessage(message.toString())
+                    .setPositiveButton("OK", null)
+                    .show();
+
+        } catch (Exception e) {
+            Log.e("SettingsFragment", "Error detecting SD card", e);
+            Toast.makeText(requireContext(), "Error detecting storage: " + e.getMessage(),
+                    Toast.LENGTH_SHORT).show();
+        }
+    }
+
+    /**
+     * Suggest using SD card paths
+     */
+    private void suggestSdCardPaths(String sdCardRoot) {
+        String suggestedA1 = sdCardRoot + "/A1";
+        String suggestedA2 = sdCardRoot + "/A2";
+
+        new androidx.appcompat.app.AlertDialog.Builder(requireContext())
+                .setTitle("Use SD Card?")
+                .setMessage("Set A1 path to:\n" + suggestedA1 + "\n\nSet A2 path to:\n" + suggestedA2)
+                .setPositiveButton("Yes", (dialog, which) -> {
+                    a1PathEditText.setText(suggestedA1);
+                    a2PathEditText.setText(suggestedA2);
+                    Toast.makeText(requireContext(), "Paths updated. Click Save to store.",
+                            Toast.LENGTH_SHORT).show();
+                })
+                .setNegativeButton("No", null)
+                .show();
     }
 }

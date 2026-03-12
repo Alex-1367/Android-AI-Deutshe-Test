@@ -64,8 +64,8 @@ public class AppState {
         private boolean showPlayCount;
 
         public Settings() {
-            this.primaryRootPath = "";
-            this.secondaryRootPath = "";
+            this.primaryRootPath = "/storage/emulated/0/_DeutscheCurs/A1";
+            this.secondaryRootPath = "/storage/emulated/0/_DeutscheCurs/A2";
             this.autoResumePlayback = true;
             this.showPlayCount = true;
         }
