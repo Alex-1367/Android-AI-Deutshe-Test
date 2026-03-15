@@ -63,7 +63,7 @@ public class FileListAdapter extends BaseAdapter {
             holder.nameView = convertView.findViewById(R.id.file_name);
             // REMOVED: holder.detailsView initialization - THIS WAS CAUSING THE CRASH
             holder.tagButton = convertView.findViewById(R.id.tag_button);
-            holder.tagContainer = convertView.findViewById(R.id.tag_container);
+            //holder.tagContainer = convertView.findViewById(R.id.tag_container);
             holder.importanceView = convertView.findViewById(R.id.importance_indicator);
             holder.playCountView = convertView.findViewById(R.id.play_count);
             convertView.setTag(holder);
@@ -83,7 +83,7 @@ public class FileListAdapter extends BaseAdapter {
             holder.tagButton.setVisibility(View.GONE);
 
             // Hide other views
-            holder.tagContainer.setVisibility(View.GONE);
+            //holder.tagContainer.setVisibility(View.GONE);
             holder.importanceView.setVisibility(View.GONE);
             holder.playCountView.setVisibility(View.GONE);
         } else {
@@ -109,9 +109,9 @@ public class FileListAdapter extends BaseAdapter {
             TrackInfo info = stateManager.getTrackInfo(file.getAbsolutePath());
             if (info != null) {
                 // Show tags
-                holder.tagContainer.removeAllViews();
+                //holder.tagContainer.removeAllViews();
                 if (info.getTags() != null && !info.getTags().isEmpty()) {
-                    holder.tagContainer.setVisibility(View.VISIBLE);
+                    //holder.tagContainer.setVisibility(View.VISIBLE);
                     for (String tag : info.getTags()) {
                         TextView tagView = new TextView(context);
                         tagView.setText(tag);
@@ -119,10 +119,10 @@ public class FileListAdapter extends BaseAdapter {
                         tagView.setPadding(8, 4, 8, 4);
                         tagView.setBackgroundColor(getTagColor(tag));
                         tagView.setTextColor(Color.WHITE);
-                        holder.tagContainer.addView(tagView);
+                        //holder.tagContainer.addView(tagView);
                     }
                 } else {
-                    holder.tagContainer.setVisibility(View.GONE);
+                    //holder.tagContainer.setVisibility(View.GONE);
                 }
 
                 // Show importance (KEPT)
@@ -201,7 +201,7 @@ public class FileListAdapter extends BaseAdapter {
         TextView nameView;
         // REMOVED: TextView detailsView; - THIS WAS CAUSING THE CRASH
         Button tagButton;
-        LinearLayout tagContainer;
+        //LinearLayout tagContainer;
         TextView importanceView;
         TextView playCountView;
     }
