@@ -4,7 +4,9 @@
     android:layout_height="wrap_content"
     android:orientation="vertical"
     android:padding="8dp"
-    android:background="?android:attr/selectableItemBackground">
+    android:background="?android:attr/selectableItemBackground"
+    android:focusable="false"
+    android:focusableInTouchMode="false">
 
     <LinearLayout
         android:layout_width="match_parent"
@@ -33,35 +35,24 @@
                 android:maxLines="1"
                 android:ellipsize="end" />
 
-            <TextView
-                android:id="@+id/file_details"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:textSize="12sp"
-                android:textColor="#666666" />
+            <!-- file_details line REMOVED as requested -->
 
         </LinearLayout>
 
-        <Button
-            android:id="@+id/play_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="Play"
-            android:textSize="12sp"
-            android:visibility="gone" />
-
+        <!-- Tag button - ONLY SIZE CHANGED (smaller) -->
         <Button
             android:id="@+id/tag_button"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
+            android:layout_width="48dp"
+            android:layout_height="28dp"
             android:text="Tag"
-            android:textSize="12sp"
+            android:textSize="10sp"
+            android:padding="2dp"
             android:visibility="gone"
             android:layout_marginStart="4dp" />
 
     </LinearLayout>
 
-    <!-- Tags container -->
+    <!-- Tags container - UNCHANGED -->
     <LinearLayout
         android:id="@+id/tag_container"
         android:layout_width="match_parent"
@@ -71,7 +62,7 @@
         android:layout_marginStart="44dp"
         android:visibility="gone" />
 
-    <!-- Additional info -->
+    <!-- Additional info - UNCHANGED (PlayCount and Importance stars) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"

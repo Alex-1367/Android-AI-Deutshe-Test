@@ -2,6 +2,7 @@ package com.german.learner.fragments;
 
 import android.Manifest;
 import android.content.pm.PackageManager;
+import android.graphics.Color;
 import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
@@ -103,15 +104,27 @@ public class PlayFragment extends Fragment {
     private void setupViews() {
         adapter = new FileListAdapter(requireContext(), fileList, stateManager, this);
         fileListView.setAdapter(adapter);
-
+        fileListView.setClickable(true);
+        fileListView.setItemsCanFocus(false);
+        fileListView.setFocusable(false);
         fileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 File file = fileList.get(position);
+                Toast.makeText(getContext(),
+                        "File: " + file.getName() + "\nIs File: " + file.isFile() + "\nIs MP3: " + isAudioFile(file),
+                        Toast.LENGTH_LONG).show();
+
+                Log.d("PLAY_DEBUG", "CLICKED: " + file.getName() + " isFile=" + file.isFile() + " isAudio=" + isAudioFile(file));
+
                 if (file.isDirectory()) {
                     navigateToPath(file.getAbsolutePath());
                 } else if (isAudioFile(file)) {
+                    Log.d("PLAY_TEST", "CALLING playAudio for: " + file.getName());
                     playAudio(file);
+                } else {
+                    Log.d("PLAY_TEST", "Not an audio file: " + file.getName());
+                    Toast.makeText(getContext(), "Not an MP3 file", Toast.LENGTH_SHORT).show();
                 }
             }
         });
@@ -120,6 +133,7 @@ public class PlayFragment extends Fragment {
             @Override
             public boolean onItemLongClick(AdapterView<?> parent, View view, int position, long id) {
                 File file = fileList.get(position);
+                Log.d("PLAY_TEST", "LONG CLICK: " + file.getName());
                 if (isAudioFile(file)) {
                     showTagSelector(file);
                     return true;
@@ -143,6 +157,7 @@ public class PlayFragment extends Fragment {
         playPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
+                Log.d("PLAY_TEST", "Play/Pause clicked, isPlaying=" + isPlaying);
                 if (mediaPlayer != null) {
                     if (mediaPlayer.isPlaying()) {
                         pauseAudio();
@@ -385,29 +400,68 @@ public class PlayFragment extends Fragment {
     }
 
     public void playAudio(File file) {
+        Log.d("PLAY_TEST", "playAudio called for: " + file.getName());
         try {
+            // Completely destroy old player
             if (mediaPlayer != null) {
+                try {
+                    if (mediaPlayer.isPlaying()) {
+                        mediaPlayer.stop();
+                    }
+                } catch (IllegalStateException e) {
+                    // Ignore
+                }
                 mediaPlayer.release();
+                mediaPlayer = null;
+                handler.removeCallbacks(updatePositionRunnable);
             }
 
+            // Create new player
             mediaPlayer = new MediaPlayer();
-
-            // This works for BOTH internal storage AND SD card!
             mediaPlayer.setDataSource(file.getAbsolutePath());
             mediaPlayer.prepare();
+            mediaPlayer.setLooping(true);
             mediaPlayer.start();
 
-            // ... rest of your code
+            // Update state
+            currentlyPlayingFile = file;
+            isPlaying = true;
+
+            // Update UI
+            nowPlayingTextView.setText("Now playing: " + file.getName());
+            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+            playPauseButton.setBackgroundColor(Color.GREEN);
+
+            // Update play count
+            stateManager.incrementPlayCount(file.getAbsolutePath());
+            stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), file.getName());
+
+            // Start position updates
+            handler.post(updatePositionRunnable);
+
+            // Simple completion listener
+            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
+                @Override
+                public void onCompletion(MediaPlayer mp) {
+                    Log.d("PLAY_DEBUG", "File completed (should not happen with looping)");
+                }
+            });
+
+            Log.d("PLAY_DEBUG", "Now playing: " + file.getName());
+
         } catch (IOException e) {
             e.printStackTrace();
-            Toast.makeText(requireContext(), "Error playing: " + e.getMessage(), Toast.LENGTH_SHORT).show();
+            Toast.makeText(requireContext(), "Error playing: " + file.getName(), Toast.LENGTH_SHORT).show();
         }
     }
+
     private void pauseAudio() {
         if (mediaPlayer != null && mediaPlayer.isPlaying()) {
             mediaPlayer.pause();
             isPlaying = false;
+            // Change to PLAY when paused
             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+            playPauseButton.setBackgroundColor(Color.RED);
 
             if (currentlyPlayingFile != null) {
                 stateManager.updatePlaybackState(
@@ -421,6 +475,8 @@ public class PlayFragment extends Fragment {
                 );
             }
             handler.removeCallbacks(updatePositionRunnable);
+
+            Toast.makeText(requireContext(), "Paused", Toast.LENGTH_SHORT).show();
         }
     }
 
@@ -428,7 +484,9 @@ public class PlayFragment extends Fragment {
         if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
             mediaPlayer.start();
             isPlaying = true;
+            // Change to PAUSE when playing
             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
+            playPauseButton.setBackgroundColor(Color.YELLOW);
 
             if (currentlyPlayingFile != null) {
                 stateManager.updatePlaybackState(
@@ -438,6 +496,8 @@ public class PlayFragment extends Fragment {
                 );
             }
             handler.post(updatePositionRunnable);
+
+            Toast.makeText(requireContext(), "Resumed", Toast.LENGTH_SHORT).show();
         }
     }
 
