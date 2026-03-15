@@ -84,15 +84,15 @@ public class MainActivity extends AppCompatActivity {
                 (tab, position) -> {
                     switch (position) {
                         case 0:
-                            tab.setText("Play");
+                            //tab.setText("Play");
                             tab.setIcon(android.R.drawable.ic_media_play);
                             break;
                         case 1:
-                            tab.setText("Test");
+                            //tab.setText("Test");
                             tab.setIcon(android.R.drawable.ic_menu_edit);
                             break;
                         case 2:
-                            tab.setText("Settings");
+                            //tab.setText("Settings");
                             tab.setIcon(android.R.drawable.ic_menu_preferences);
                             break;
                     }

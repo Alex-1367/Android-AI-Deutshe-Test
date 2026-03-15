@@ -16,7 +16,7 @@
         android:allowBackup="true"
         android:icon="@mipmap/ic_launcher"
         android:label="Deutsch Lerner"
-        android:theme="@style/Theme.MaterialComponents.Light.DarkActionBar"
+        android:theme="@style/AppTheme"
         android:name=".GermanApplication"
         android:preserveLegacyExternalStorage="true"
         android:requestLegacyExternalStorage="true">

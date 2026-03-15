@@ -59,7 +59,7 @@ public class FileListAdapter extends BaseAdapter {
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_file, parent, false);
             holder = new ViewHolder();
-            holder.iconView = convertView.findViewById(R.id.file_icon);
+            //holder.iconView = convertView.findViewById(R.id.file_icon);
             holder.nameView = convertView.findViewById(R.id.file_name);
             // REMOVED: holder.detailsView initialization - THIS WAS CAUSING THE CRASH
             holder.tagButton = convertView.findViewById(R.id.tag_button);
@@ -74,7 +74,7 @@ public class FileListAdapter extends BaseAdapter {
         File file = files.get(position);
 
         if (file.isDirectory()) {
-            holder.iconView.setImageResource(android.R.drawable.ic_menu_gallery);
+            //holder.iconView.setImageResource(android.R.drawable.ic_menu_gallery);
             holder.nameView.setText(file.getName() + "/");
 
             // REMOVED: All code that used detailsView
@@ -87,7 +87,7 @@ public class FileListAdapter extends BaseAdapter {
             holder.importanceView.setVisibility(View.GONE);
             holder.playCountView.setVisibility(View.GONE);
         } else {
-            holder.iconView.setImageResource(android.R.drawable.ic_media_play);
+            //holder.iconView.setImageResource(android.R.drawable.ic_media_play);
             holder.nameView.setText(file.getName());
 
             // REMOVED: setting detailsView text - THIS WAS CAUSING THE CRASH
@@ -158,7 +158,7 @@ public class FileListAdapter extends BaseAdapter {
             }
         });
         holder.tagButton.setFocusable(false);
-        holder.iconView.setFocusable(false);
+        //holder.iconView.setFocusable(false);
         return convertView;
     }
 
