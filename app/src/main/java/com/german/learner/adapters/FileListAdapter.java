@@ -59,11 +59,9 @@ public class FileListAdapter extends BaseAdapter {
         if (convertView == null) {
             convertView = LayoutInflater.from(context).inflate(R.layout.item_file, parent, false);
             holder = new ViewHolder();
-            //holder.iconView = convertView.findViewById(R.id.file_icon);
             holder.nameView = convertView.findViewById(R.id.file_name);
-            // REMOVED: holder.detailsView initialization - THIS WAS CAUSING THE CRASH
             holder.tagButton = convertView.findViewById(R.id.tag_button);
-            //holder.tagContainer = convertView.findViewById(R.id.tag_container);
+            holder.tagContainer = convertView.findViewById(R.id.tag_container);  // UNCOMMENTED
             holder.importanceView = convertView.findViewById(R.id.importance_indicator);
             holder.playCountView = convertView.findViewById(R.id.play_count);
             convertView.setTag(holder);
@@ -74,25 +72,15 @@ public class FileListAdapter extends BaseAdapter {
         File file = files.get(position);
 
         if (file.isDirectory()) {
-            //holder.iconView.setImageResource(android.R.drawable.ic_menu_gallery);
             holder.nameView.setText(file.getName() + "/");
-
-            // REMOVED: All code that used detailsView
-
-            // Hide tag button for directories
             holder.tagButton.setVisibility(View.GONE);
-
-            // Hide other views
-            //holder.tagContainer.setVisibility(View.GONE);
+            if (holder.tagContainer != null) {
+                holder.tagContainer.setVisibility(View.GONE);
+            }
             holder.importanceView.setVisibility(View.GONE);
             holder.playCountView.setVisibility(View.GONE);
         } else {
-            //holder.iconView.setImageResource(android.R.drawable.ic_media_play);
             holder.nameView.setText(file.getName());
-
-            // REMOVED: setting detailsView text - THIS WAS CAUSING THE CRASH
-
-            // Show tag button
             holder.tagButton.setVisibility(View.VISIBLE);
 
             // Handle tag button click
@@ -104,28 +92,31 @@ public class FileListAdapter extends BaseAdapter {
                     }
                 }
             });
+            holder.tagButton.setFocusable(false);
 
-            // Show tags and metadata (KEPT)
+            // Show tags and metadata
             TrackInfo info = stateManager.getTrackInfo(file.getAbsolutePath());
             if (info != null) {
                 // Show tags
-                //holder.tagContainer.removeAllViews();
-                if (info.getTags() != null && !info.getTags().isEmpty()) {
-                    //holder.tagContainer.setVisibility(View.VISIBLE);
-                    for (String tag : info.getTags()) {
-                        TextView tagView = new TextView(context);
-                        tagView.setText(tag);
-                        tagView.setTextSize(10);
-                        tagView.setPadding(8, 4, 8, 4);
-                        tagView.setBackgroundColor(getTagColor(tag));
-                        tagView.setTextColor(Color.WHITE);
-                        //holder.tagContainer.addView(tagView);
+                if (holder.tagContainer != null) {
+                    holder.tagContainer.removeAllViews();
+                    if (info.getTags() != null && !info.getTags().isEmpty()) {
+                        holder.tagContainer.setVisibility(View.VISIBLE);
+                        for (String tag : info.getTags()) {
+                            TextView tagView = new TextView(context);
+                            tagView.setText(tag);
+                            tagView.setTextSize(8); // Smaller
+                            tagView.setPadding(2, 1, 2, 1);
+                            tagView.setBackgroundColor(getTagColor(tag));
+                            tagView.setTextColor(Color.WHITE);
+                            holder.tagContainer.addView(tagView);
+                        }
+                    } else {
+                        holder.tagContainer.setVisibility(View.GONE);
                     }
-                } else {
-                    //holder.tagContainer.setVisibility(View.GONE);
                 }
 
-                // Show importance (KEPT)
+// Show importance
                 if (info.getImportanceLevel() > 0) {
                     holder.importanceView.setVisibility(View.VISIBLE);
                     StringBuilder stars = new StringBuilder();
@@ -134,11 +125,12 @@ public class FileListAdapter extends BaseAdapter {
                     }
                     holder.importanceView.setText(stars.toString());
                     holder.importanceView.setTextColor(Color.parseColor("#FFC107"));
+                    holder.importanceView.setTextSize(10); // Match tag text size (8-10sp)
                 } else {
                     holder.importanceView.setVisibility(View.GONE);
                 }
 
-                // Show play count (KEPT)
+                // Show play count
                 if (info.getPlayCount() > 0) {
                     holder.playCountView.setVisibility(View.VISIBLE);
                     holder.playCountView.setText("Played: " + info.getPlayCount());
@@ -148,17 +140,6 @@ public class FileListAdapter extends BaseAdapter {
             }
         }
 
-        // Handle tag button click
-        holder.tagButton.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (playFragment != null) {
-                    playFragment.showTagSelector(file);
-                }
-            }
-        });
-        holder.tagButton.setFocusable(false);
-        //holder.iconView.setFocusable(false);
         return convertView;
     }
 
@@ -173,35 +154,10 @@ public class FileListAdapter extends BaseAdapter {
         }
     }
 
-    private int countMp3Files(File[] files) {
-        if (files == null) return 0;
-        int count = 0;
-        for (File file : files) {
-            if (file.isFile() && file.getName().toLowerCase().endsWith(".mp3")) {
-                count++;
-            }
-        }
-        return count;
-    }
-
-    private String formatFileSize(long size) {
-        if (size < 1024) {
-            return size + " B";
-        } else if (size < 1024 * 1024) {
-            return String.format(Locale.getDefault(), "%.1f KB", size / 1024.0);
-        } else if (size < 1024 * 1024 * 1024) {
-            return String.format(Locale.getDefault(), "%.1f MB", size / (1024.0 * 1024.0));
-        } else {
-            return String.format(Locale.getDefault(), "%.1f GB", size / (1024.0 * 1024.0 * 1024.0));
-        }
-    }
-
     static class ViewHolder {
-        ImageView iconView;
         TextView nameView;
-        // REMOVED: TextView detailsView; - THIS WAS CAUSING THE CRASH
         Button tagButton;
-        //LinearLayout tagContainer;
+        LinearLayout tagContainer;  // UNCOMMENTED
         TextView importanceView;
         TextView playCountView;
     }

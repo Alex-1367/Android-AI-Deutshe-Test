@@ -17,6 +17,7 @@ import android.widget.Button;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
 import android.widget.ListView;
+import android.widget.Space;
 import android.widget.TextView;
 import android.widget.Toast;
 
@@ -273,7 +274,6 @@ public class PlayFragment extends Fragment {
         });
 
         // Setup position update runnable
-// Setup position update runnable
         updatePositionRunnable = new Runnable() {
             @Override
             public void run() {
@@ -307,35 +307,45 @@ public class PlayFragment extends Fragment {
     }
 
     private void setupTagSelector() {
-        // Create tag buttons
-        String[] tags = {"Digits", "Words", "Dialog", "Dictionary", "Grammar"};
+        // Clear existing views
+        tagSelectorLayout.removeAllViews();
+
+        // Make the layout vertical (two rows) with minimal spacing
+        tagSelectorLayout.setOrientation(LinearLayout.VERTICAL);
+        tagSelectorLayout.setPadding(4, 4, 4, 4);
+
+        // FIRST ROW - Tags (without Grammar)
+        LinearLayout tagRow = new LinearLayout(requireContext());
+        tagRow.setOrientation(LinearLayout.HORIZONTAL);
+        tagRow.setHorizontalScrollBarEnabled(true);
+        tagRow.setPadding(0, 0, 0, 0);
+
+        String[] tags = {"Digits", "Words", "Dialog", "Dict"};
         int[] colors = {
                 android.R.color.holo_red_dark,
                 android.R.color.holo_blue_dark,
                 android.R.color.holo_green_dark,
                 android.R.color.holo_orange_dark,
-                android.R.color.holo_purple
         };
-
-        tagSelectorLayout.removeAllViews();
 
         for (int i = 0; i < tags.length; i++) {
             final String tag = tags[i];
             final int color = colors[i];
 
-            Button button = new Button(requireContext());
-            button.setText(tag);
-            button.setBackgroundColor(getResources().getColor(color));
-            button.setPadding(16, 8, 16, 8);
+            TextView tagView = new TextView(requireContext());
+            tagView.setText(tag);
+            tagView.setBackgroundColor(getResources().getColor(color));
+            tagView.setTextSize(16);
+            tagView.setPadding(8, 4, 8, 4);
+            tagView.setMinWidth(0);
+            tagView.setMinHeight(0);
+            tagView.setHeight(70);
+            tagView.setWidth(160);
+            tagView.setGravity(android.view.Gravity.CENTER);
+            tagView.setTextColor(Color.WHITE);
+            tagView.setIncludeFontPadding(false);
 
-            LinearLayout.LayoutParams params = new LinearLayout.LayoutParams(
-                    ViewGroup.LayoutParams.WRAP_CONTENT,
-                    ViewGroup.LayoutParams.WRAP_CONTENT
-            );
-            params.setMargins(4, 4, 4, 4);
-            button.setLayoutParams(params);
-
-            button.setOnClickListener(new View.OnClickListener() {
+            tagView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (selectedFileForTagging != null) {
@@ -344,23 +354,75 @@ public class PlayFragment extends Fragment {
                     }
                 }
             });
-
-            tagSelectorLayout.addView(button);
+            tagRow.addView(tagView);
         }
+        tagSelectorLayout.addView(tagRow);
 
-        // Add importance level selector
-        LinearLayout importanceLayout = new LinearLayout(requireContext());
-        importanceLayout.setOrientation(LinearLayout.HORIZONTAL);
+        // Add spacing between rows
+        Space space = new Space(requireContext());
+        space.setLayoutParams(new LinearLayout.LayoutParams(
+                ViewGroup.LayoutParams.MATCH_PARENT, 8));
+        tagSelectorLayout.addView(space);
 
-        TextView importanceLabel = new TextView(requireContext());
-        importanceLabel.setText("Importance: ");
-        importanceLayout.addView(importanceLabel);
+        // SECOND ROW - Grammar + Importance + Close
+        LinearLayout importanceRow = new LinearLayout(requireContext());
+        importanceRow.setOrientation(LinearLayout.HORIZONTAL);
+        importanceRow.setPadding(0, 0, 0, 0);
 
+        // Grammar button (now at the beginning of the row)
+        TextView grammarView = new TextView(requireContext());
+        grammarView.setText("Grammar");
+        grammarView.setBackgroundColor(getResources().getColor(android.R.color.holo_purple));
+        grammarView.setTextSize(16);
+        grammarView.setPadding(8, 4, 8, 4);
+        grammarView.setMinWidth(0);
+        grammarView.setMinHeight(0);
+        grammarView.setHeight(70);
+        grammarView.setWidth(160);
+        grammarView.setGravity(android.view.Gravity.CENTER);
+        grammarView.setTextColor(Color.WHITE);
+        grammarView.setIncludeFontPadding(false);
+
+        grammarView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (selectedFileForTagging != null) {
+                    toggleTag(selectedFileForTagging, "Grammar");
+                    tagSelectorLayout.setVisibility(View.GONE);
+                }
+            }
+        });
+        importanceRow.addView(grammarView);
+
+        // Star label
+        TextView starLabel = new TextView(requireContext());
+        starLabel.setText("★");
+        starLabel.setTextSize(20);
+        starLabel.setPadding(0, 0, 0, 0);
+        starLabel.setHeight(70);
+        starLabel.setWidth(70);
+        starLabel.setGravity(android.view.Gravity.CENTER);
+        starLabel.setTextColor(Color.parseColor("#FFC107"));
+        starLabel.setIncludeFontPadding(false);
+        importanceRow.addView(starLabel);
+
+        // Importance buttons 1-5
         for (int i = 1; i <= 5; i++) {
             final int level = i;
-            Button levelButton = new Button(requireContext());
-            levelButton.setText(String.valueOf(i));
-            levelButton.setOnClickListener(new View.OnClickListener() {
+            TextView levelView = new TextView(requireContext());
+            levelView.setText(String.valueOf(i));
+            levelView.setTextSize(16);
+            levelView.setPadding(0, 0, 0, 0);
+            levelView.setMinWidth(0);
+            levelView.setMinHeight(0);
+            levelView.setHeight(70);
+            levelView.setWidth(70);
+            levelView.setGravity(android.view.Gravity.CENTER);
+            levelView.setBackgroundColor(Color.parseColor("#FFC107"));
+            levelView.setTextColor(Color.BLACK);
+            levelView.setIncludeFontPadding(false);
+
+            levelView.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (selectedFileForTagging != null) {
@@ -371,18 +433,37 @@ public class PlayFragment extends Fragment {
                         adapter.notifyDataSetChanged();
                         tagSelectorLayout.setVisibility(View.GONE);
                         Toast.makeText(requireContext(),
-                                "Importance level set to " + level,
+                                level + "★",
                                 Toast.LENGTH_SHORT).show();
                     }
                 }
             });
-            importanceLayout.addView(levelButton);
+            importanceRow.addView(levelView);
         }
 
-        tagSelectorLayout.addView(importanceLayout);
+        // Close button in importance row
+        TextView closeView = new TextView(requireContext());
+        closeView.setText("✕");
+        closeView.setTextSize(20);
+        closeView.setPadding(0, 0, 0, 0);
+        closeView.setHeight(70);
+        closeView.setWidth(70);
+        closeView.setGravity(android.view.Gravity.CENTER);
+        closeView.setBackgroundColor(Color.parseColor("#888888"));
+        closeView.setTextColor(Color.WHITE);
+        closeView.setIncludeFontPadding(false);
+        closeView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                tagSelectorLayout.setVisibility(View.GONE);
+            }
+        });
+        importanceRow.addView(closeView);
+
+        tagSelectorLayout.addView(importanceRow);
+
         tagSelectorLayout.setVisibility(View.GONE);
     }
-
     public void showTagSelector(File file) {
         selectedFileForTagging = file;
         tagSelectorLayout.setVisibility(View.VISIBLE);

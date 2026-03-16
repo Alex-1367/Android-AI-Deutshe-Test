@@ -10,6 +10,7 @@
     android:orientation="horizontal"
     android:padding="4dp">
 
+    <!-- Filename - takes available space -->
     <TextView
         android:id="@+id/file_name"
         android:layout_width="0dp"
@@ -19,34 +20,52 @@
         android:maxLines="1"
         android:textSize="14sp" />
 
+    <!-- Tags container - now in same row, horizontal scrolling if needed -->
+    <HorizontalScrollView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginEnd="4dp"
+        android:scrollbars="none">
 
+        <LinearLayout
+            android:id="@+id/tag_container"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:visibility="gone" />
+    </HorizontalScrollView>
+
+    <!-- Play count -->
     <TextView
         android:id="@+id/play_count"
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
+        android:layout_marginEnd="4dp"
         android:textColor="#4CAF50"
-        android:textSize="12sp"
+        android:textSize="10sp"
         android:visibility="gone" />
 
-
+    <!-- Importance indicator -->
     <TextView
         android:id="@+id/importance_indicator"
         android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_marginEnd="8dp"
-        android:textColor="#FFFFFF"
-        android:textSize="14sp"
+        android:layout_height="16dp"
+        android:layout_marginEnd="4dp"
+        android:includeFontPadding="false"
+        android:lineSpacingExtra="0dp"
+        android:padding="0dp"
+        android:textColor="#FFC107"
+        android:textSize="10sp"
         android:visibility="gone" />
 
-    <!-- Tag button - smaller -->
+    <!-- Tag button -->
     <Button
         android:id="@+id/tag_button"
-        android:layout_width="40dp"
-        android:layout_height="24dp"
-        android:padding="2dp"
+        android:layout_width="24dp"
+        android:layout_height="20dp"
+        android:padding="1dp"
         android:text="Tag"
-        android:textSize="8sp"
+        android:textSize="7sp"
         android:visibility="gone" />
 
 </LinearLayout>
