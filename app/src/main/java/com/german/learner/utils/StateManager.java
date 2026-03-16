@@ -257,4 +257,26 @@ public class StateManager {
         currentState = new AppState();
         saveState();
     }
+
+    public boolean hasSavedState() {
+        // Check if we have any saved folder state or playback state
+        if (stateFile.exists()) {
+            // Also check if we have actual content
+            if (currentState != null) {
+                // Check if we have any folder states or a non-empty playback state
+                boolean hasFolderState = currentState.getFolderStates() != null &&
+                        !currentState.getFolderStates().isEmpty();
+                boolean hasPlayback = currentState.getCurrentPlayback() != null &&
+                        currentState.getCurrentPlayback().getCurrentFilePath() != null &&
+                        !currentState.getCurrentPlayback().getCurrentFilePath().isEmpty();
+                boolean hasSettings = currentState.getSettings() != null &&
+                        currentState.getSettings().getPrimaryRootPath() != null &&
+                        !currentState.getSettings().getPrimaryRootPath().isEmpty();
+
+                return hasFolderState || hasPlayback || hasSettings;
+            }
+            return true; // File exists, assume it has content
+        }
+        return false; // No config file
+    }
 }

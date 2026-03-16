@@ -46,7 +46,7 @@ public class MainActivity extends AppCompatActivity {
             if (!Environment.isExternalStorageManager()) {
                 requestManageStoragePermission();
             } else {
-                setupTabs();
+                checkFirstRun();
             }
         } else {
             if (ContextCompat.checkSelfPermission(this, Manifest.permission.READ_EXTERNAL_STORAGE)
@@ -55,8 +55,21 @@ public class MainActivity extends AppCompatActivity {
                         new String[]{Manifest.permission.READ_EXTERNAL_STORAGE},
                         PERMISSION_REQUEST_CODE);
             } else {
-                setupTabs();
+                checkFirstRun();
             }
+        }
+    }
+
+    private void checkFirstRun() {
+        // Check if config file exists (has saved state)
+        boolean hasSavedState = stateManager.hasSavedState();
+
+        if (!hasSavedState) {
+            // First run - go to Settings tab to select folders
+            setupTabs(2); // Settings tab
+        } else {
+            // Normal run - go to Play tab with saved state
+            setupTabs(0); // Play tab
         }
     }
 
@@ -73,26 +86,23 @@ public class MainActivity extends AppCompatActivity {
                 .show();
     }
 
-    private void setupTabs() {
+    private void setupTabs(int startTab) {
         pagerAdapter = new TabsPagerAdapter(this);
         viewPager.setAdapter(pagerAdapter);
 
-        // Start with first tab (Play tab)
-        viewPager.setCurrentItem(0, false);
+        // Start with specified tab
+        viewPager.setCurrentItem(startTab, false);
 
         new TabLayoutMediator(tabLayout, viewPager,
                 (tab, position) -> {
                     switch (position) {
                         case 0:
-                            //tab.setText("Play");
                             tab.setIcon(android.R.drawable.ic_media_play);
                             break;
                         case 1:
-                            //tab.setText("Test");
                             tab.setIcon(android.R.drawable.ic_menu_edit);
                             break;
                         case 2:
-                            //tab.setText("Settings");
                             tab.setIcon(android.R.drawable.ic_menu_preferences);
                             break;
                     }
@@ -106,7 +116,7 @@ public class MainActivity extends AppCompatActivity {
 
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                setupTabs();
+                checkFirstRun();
             } else {
                 new MaterialAlertDialogBuilder(this)
                         .setTitle("Permission Denied")
@@ -124,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
         if (requestCode == PERMISSION_REQUEST_CODE) {
             if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.R) {
                 if (Environment.isExternalStorageManager()) {
-                    setupTabs();
+                    checkFirstRun();
                 } else {
                     finish();
                 }

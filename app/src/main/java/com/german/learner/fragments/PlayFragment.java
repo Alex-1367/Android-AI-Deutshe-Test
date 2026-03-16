@@ -84,21 +84,60 @@ public class PlayFragment extends Fragment {
         setupViews();
         setupTagSelector();
 
-        // Start with A1 folder or last saved folder
+        // Get saved path from state
         String startPath = stateManager.getPrimaryRootPath();
         File startDir = new File(startPath);
+
         if (!startDir.exists()) {
             startPath = stateManager.getSecondaryRootPath();
+            startDir = new File(startPath);
         }
+
+        // Navigate to saved path
         navigateToPath(startPath);
         Log.d("PLAY_DEBUG", "Navigated to: " + startPath);
 
-        // Restore playing state
+        // Restore playing state AFTER files are loaded
         restorePlayingState();
+
+        // Scroll to last position after list is populated
+        fileListView.post(new Runnable() {
+            @Override
+            public void run() {
+                // First restore saved scroll position
+                if (currentDirectory != null) {
+                    stateManager.restoreFolderState(currentDirectory.getAbsolutePath(), fileListView);
+                }
+
+                // Then if we have a currently playing file, make sure it's visible
+                if (currentlyPlayingFile != null) {
+                    scrollToFile(currentlyPlayingFile);
+                }
+            }
+        });
 
         debugStorageAccess(startPath);
 
         return view;
+    }
+
+    private void scrollToFile(File file) {
+        if (file == null || fileList.isEmpty()) return;
+
+        for (int i = 0; i < fileList.size(); i++) {
+            File f = fileList.get(i);
+            if (f.getAbsolutePath().equals(file.getAbsolutePath())) {
+                final int position = i;
+                fileListView.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        fileListView.setSelection(position);
+                        // Optionally highlight the item
+                    }
+                });
+                break;
+            }
+        }
     }
 
     private void setupViews() {
@@ -509,13 +548,23 @@ public class PlayFragment extends Fragment {
             File lastPlayed = new File(playbackState.getCurrentFilePath());
             if (lastPlayed.exists()) {
                 currentlyPlayingFile = lastPlayed;
-                String status = playbackState.isPlaying() ? "Paused at" : "Last played";
-                nowPlayingTextView.setText(String.format("%s: %s (%d sec)",
-                        status,
-                        lastPlayed.getName(),
-                        playbackState.getCurrentPosition() / 1000));
 
-                playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                // Check if we're in the correct directory
+                if (currentDirectory != null && lastPlayed.getParentFile() != null &&
+                        lastPlayed.getParentFile().getAbsolutePath().equals(currentDirectory.getAbsolutePath())) {
+
+                    String status = playbackState.isPlaying() ? "Paused at" : "Last played";
+                    long position = playbackState.getCurrentPosition();
+                    nowPlayingTextView.setText(String.format("%s: %s (%d sec)",
+                            status,
+                            lastPlayed.getName(),
+                            position / 1000));
+
+                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+
+                    // Save as last selected for scrolling
+                    stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), lastPlayed.getName());
+                }
             }
         }
     }
@@ -551,9 +600,37 @@ public class PlayFragment extends Fragment {
     @Override
     public void onResume() {
         super.onResume();
+
         // Restore scroll position
         if (currentDirectory != null) {
             stateManager.restoreFolderState(currentDirectory.getAbsolutePath(), fileListView);
+        }
+
+        // Restore playback state
+        PlaybackState playbackState = stateManager.getPlaybackState();
+        if (playbackState != null && playbackState.getCurrentFilePath() != null &&
+                !playbackState.getCurrentFilePath().isEmpty()) {
+
+            File lastPlayed = new File(playbackState.getCurrentFilePath());
+
+            // If we're in the same directory as the last played file
+            if (currentDirectory != null && lastPlayed.getParentFile() != null &&
+                    lastPlayed.getParentFile().getAbsolutePath().equals(currentDirectory.getAbsolutePath())) {
+
+                currentlyPlayingFile = lastPlayed;
+
+                String status = playbackState.isPlaying() ? "Paused at" : "Last played";
+                long position = playbackState.getCurrentPosition();
+                nowPlayingTextView.setText(String.format("%s: %s (%d sec)",
+                        status,
+                        lastPlayed.getName(),
+                        position / 1000));
+
+                playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+
+                // Scroll to the file
+                scrollToFile(lastPlayed);
+            }
         }
     }
 
