@@ -51,6 +51,7 @@ public class PlayFragment extends Fragment {
     private ImageButton playPauseButton;
     private TextView nowPlayingTextView;
     private LinearLayout tagSelectorLayout;
+    private TextView positionIndicator;
 
     private File currentDirectory;
     private List<File> fileList = new ArrayList<>();
@@ -78,6 +79,7 @@ public class PlayFragment extends Fragment {
         playPauseButton = view.findViewById(R.id.play_pause);
         nowPlayingTextView = view.findViewById(R.id.now_playing);
         tagSelectorLayout = view.findViewById(R.id.tag_selector);
+        positionIndicator = view.findViewById(R.id.position_indicator);
 
         stateManager = ((MainActivity) requireActivity()).getStateManager();
 
@@ -271,10 +273,24 @@ public class PlayFragment extends Fragment {
         });
 
         // Setup position update runnable
+// Setup position update runnable
         updatePositionRunnable = new Runnable() {
             @Override
             public void run() {
                 if (mediaPlayer != null && mediaPlayer.isPlaying() && currentlyPlayingFile != null) {
+                    int currentPos = mediaPlayer.getCurrentPosition() / 1000; // seconds
+                    int totalDur = mediaPlayer.getDuration() / 1000; // seconds
+
+                    // Format as minutes:seconds
+                    String currentStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
+                            currentPos / 60, currentPos % 60);
+                    String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
+                            totalDur / 60, totalDur % 60);
+
+                    // Update position indicator
+                    positionIndicator.setText(currentStr + "/" + totalStr);
+                    positionIndicator.setVisibility(View.VISIBLE);
+
                     stateManager.updatePlaybackState(
                             currentlyPlayingFile.getAbsolutePath(),
                             mediaPlayer.getCurrentPosition(),
@@ -284,7 +300,7 @@ public class PlayFragment extends Fragment {
                             currentlyPlayingFile.getAbsolutePath(),
                             mediaPlayer.getCurrentPosition()
                     );
-                    handler.postDelayed(this, 5000);
+                    handler.postDelayed(this, 1000); // Update every second
                 }
             }
         };
@@ -528,9 +544,16 @@ public class PlayFragment extends Fragment {
             isPlaying = true;
 
             // Update UI
-            nowPlayingTextView.setText("Now playing: " + file.getName());
+            nowPlayingTextView.setText(file.getName());
             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
             playPauseButton.setBackgroundColor(Color.GREEN);
+
+            // Show position indicator
+            positionIndicator.setVisibility(View.VISIBLE);
+            int totalDur = mediaPlayer.getDuration() / 1000;
+            String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
+                    totalDur / 60, totalDur % 60);
+            positionIndicator.setText("0:00/" + totalStr);
 
             // Update play count
             stateManager.incrementPlayCount(file.getAbsolutePath());
@@ -543,7 +566,16 @@ public class PlayFragment extends Fragment {
             mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
                 @Override
                 public void onCompletion(MediaPlayer mp) {
-                    Log.d("PLAY_DEBUG", "File completed (should not happen with looping)");
+                    isPlaying = false;
+                    nowPlayingTextView.setText("Finished: " + file.getName());
+                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
+                    handler.removeCallbacks(updatePositionRunnable);
+
+                    // Reset position indicator
+                    positionIndicator.setText("0:00/" + totalStr);
+
+                    stateManager.updatePlaybackState(file.getAbsolutePath(), 0, false);
+                    stateManager.updateTrackPosition(file.getAbsolutePath(), 0);
                 }
             });
 
@@ -564,6 +596,15 @@ public class PlayFragment extends Fragment {
             playPauseButton.setBackgroundColor(Color.RED);
 
             if (currentlyPlayingFile != null) {
+                // Update indicator one last time with current position
+                int currentPos = mediaPlayer.getCurrentPosition() / 1000;
+                int totalDur = mediaPlayer.getDuration() / 1000;
+                String currentStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
+                        currentPos / 60, currentPos % 60);
+                String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
+                        totalDur / 60, totalDur % 60);
+                positionIndicator.setText(currentStr + "/" + totalStr);
+
                 stateManager.updatePlaybackState(
                         currentlyPlayingFile.getAbsolutePath(),
                         mediaPlayer.getCurrentPosition(),
