@@ -164,9 +164,56 @@ public class PlayFragment extends Fragment {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 File file = fileList.get(position);
-                Toast.makeText(getContext(),
-                        "File: " + file.getName() + "\nIs File: " + file.isFile() + "\nIs MP3: " + isAudioFile(file),
-                        Toast.LENGTH_LONG).show();
+                if (file.isDirectory()) {
+                    // For directories, show folder info
+                    File[] files = file.listFiles();
+                    int itemCount = files != null ? files.length : 0;
+                    int mp3Count = 0;
+                    if (files != null) {
+                        for (File f : files) {
+                            if (f.isFile() && f.getName().toLowerCase().endsWith(".mp3")) {
+                                mp3Count++;
+                            }
+                        }
+                    }
+                    Toast.makeText(getContext(),
+                            "📁 " + file.getName() + "\n" +
+                                    "Contains: " + itemCount + " items (" + mp3Count + " audio files)",
+                            Toast.LENGTH_LONG).show();
+                } else {
+                    // For MP3 files, show file size and duration
+                    long fileSize = file.length();
+                    String sizeStr;
+                    if (fileSize < 1024) {
+                        sizeStr = fileSize + " B";
+                    } else if (fileSize < 1024 * 1024) {
+                        sizeStr = String.format(java.util.Locale.getDefault(), "%.1f KB", fileSize / 1024.0);
+                    } else {
+                        sizeStr = String.format(java.util.Locale.getDefault(), "%.1f MB", fileSize / (1024.0 * 1024.0));
+                    }
+
+                    // Get duration if possible (requires MediaPlayer)
+                    String durationStr = "Unknown";
+                    try {
+                        MediaPlayer mp = new MediaPlayer();
+                        mp.setDataSource(file.getAbsolutePath());
+                        mp.prepare();
+                        int duration = mp.getDuration() / 1000; // in seconds
+                        mp.release();
+
+                        int minutes = duration / 60;
+                        int seconds = duration % 60;
+                        durationStr = String.format(java.util.Locale.getDefault(), "%d:%02d", minutes, seconds);
+                    } catch (Exception e) {
+                        // Ignore duration errors
+                    }
+
+                    Toast.makeText(getContext(),
+                            "🎵 " + file.getName() + "\n" +
+                                    "Size: " + sizeStr + "\n" +
+                                    "Duration: " + durationStr,
+                            Toast.LENGTH_LONG).show();
+                }
 
                 Log.d("PLAY_DEBUG", "CLICKED: " + file.getName() + " isFile=" + file.isFile() + " isAudio=" + isAudioFile(file));
 
