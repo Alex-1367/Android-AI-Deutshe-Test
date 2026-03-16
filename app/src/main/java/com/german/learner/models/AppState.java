@@ -8,12 +8,14 @@ public class AppState {
     private Map<String, TrackInfo> trackMetadata;
     private PlaybackState currentPlayback;
     private Settings settings;
+    private String currentFolderPath;  // MOVED THIS LINE HERE - before it's used
 
     public AppState() {
         this.folderStates = new HashMap<>();
         this.trackMetadata = new HashMap<>();
         this.currentPlayback = new PlaybackState();
         this.settings = new Settings();
+        this.currentFolderPath = "";  // Initialize it
     }
 
     // Getters and Setters
@@ -28,6 +30,9 @@ public class AppState {
 
     public Settings getSettings() { return settings; }
     public void setSettings(Settings settings) { this.settings = settings; }
+
+    public String getCurrentFolderPath() { return currentFolderPath; }
+    public void setCurrentFolderPath(String currentFolderPath) { this.currentFolderPath = currentFolderPath; }
 
     // Folder state for each path
     public static class FolderState {
@@ -58,27 +63,20 @@ public class AppState {
 
     // Settings
     public static class Settings {
-        private String primaryRootPath;
-        private String secondaryRootPath;
+        private String rootPath;
         private boolean autoResumePlayback;
         private boolean showPlayCount;
 
         public Settings() {
-            this.primaryRootPath = "/storage/emulated/0/_DeutscheCurs/A1";
-            this.secondaryRootPath = "/storage/emulated/0/_DeutscheCurs/A2";
+            this.rootPath = "";
             this.autoResumePlayback = true;
             this.showPlayCount = true;
         }
 
-        public String getPrimaryRootPath() { return primaryRootPath; }
-        public void setPrimaryRootPath(String primaryRootPath) { this.primaryRootPath = primaryRootPath; }
-
-        public String getSecondaryRootPath() { return secondaryRootPath; }
-        public void setSecondaryRootPath(String secondaryRootPath) { this.secondaryRootPath = secondaryRootPath; }
-
+        public String getRootPath() { return rootPath; }
+        public void setRootPath(String rootPath) { this.rootPath = rootPath; }
         public boolean isAutoResumePlayback() { return autoResumePlayback; }
         public void setAutoResumePlayback(boolean autoResumePlayback) { this.autoResumePlayback = autoResumePlayback; }
-
         public boolean isShowPlayCount() { return showPlayCount; }
         public void setShowPlayCount(boolean showPlayCount) { this.showPlayCount = showPlayCount; }
     }

@@ -84,23 +84,37 @@ public class PlayFragment extends Fragment {
         setupViews();
         setupTagSelector();
 
-        // Get saved path from state
-        String startPath = stateManager.getPrimaryRootPath();
+// Get saved path from state
+        String startPath = stateManager.getRootPath();
         File startDir = new File(startPath);
 
-        if (!startDir.exists()) {
-            startPath = stateManager.getSecondaryRootPath();
-            startDir = new File(startPath);
+// Check if we have a last played file
+        PlaybackState playbackState = stateManager.getPlaybackState();
+        String targetPath = startPath; // Default to root
+
+        if (playbackState != null && playbackState.getCurrentFilePath() != null &&
+                !playbackState.getCurrentFilePath().isEmpty()) {
+
+            File lastPlayed = new File(playbackState.getCurrentFilePath());
+            if (lastPlayed.exists()) {
+                // Navigate to the folder containing the last played file, not the file itself
+                File parentDir = lastPlayed.getParentFile();
+                if (parentDir != null && parentDir.exists()) {
+                    targetPath = parentDir.getAbsolutePath();
+                    currentlyPlayingFile = lastPlayed; // Save for later highlighting
+                    Log.d("PLAY_DEBUG", "Last played file found in: " + targetPath);
+                }
+            }
         }
 
-        // Navigate to saved path
-        navigateToPath(startPath);
-        Log.d("PLAY_DEBUG", "Navigated to: " + startPath);
+// Navigate to the target path (either root or last played file's folder)
+        navigateToPath(targetPath);
+        Log.d("PLAY_DEBUG", "Navigated to: " + targetPath);
 
-        // Restore playing state AFTER files are loaded
+// Restore playing state AFTER files are loaded
         restorePlayingState();
 
-        // Scroll to last position after list is populated
+// Scroll to last position after list is populated
         fileListView.post(new Runnable() {
             @Override
             public void run() {
@@ -341,7 +355,7 @@ public class PlayFragment extends Fragment {
             currentDirectory = file;
             currentPathTextView.setText(file.getAbsolutePath());
             loadFiles(file);
-
+            stateManager.setCurrentFolder(file.getAbsolutePath());
             // Restore scroll position for this folder
             stateManager.restoreFolderState(file.getAbsolutePath(), fileListView);
         }
@@ -719,5 +733,59 @@ public class PlayFragment extends Fragment {
         }
 
         Log.d("PLAY_DEBUG", "========== END DEBUG ==========");
+    }
+
+    private void dumpStateInfo() {
+        Log.d("STATE_DEBUG", "========== STATE DIAGNOSTIC ==========");
+
+        // Check if state file exists
+        File stateFile = new File(requireContext().getFilesDir(), "deutsch_lerner_state.json");
+        Log.d("STATE_DEBUG", "State file exists: " + stateFile.exists());
+        if (stateFile.exists()) {
+            Log.d("STATE_DEBUG", "State file size: " + stateFile.length() + " bytes");
+        }
+
+        // Check hasSavedState()
+        boolean hasState = stateManager.hasSavedState();
+        Log.d("STATE_DEBUG", "hasSavedState(): " + hasState);
+
+        // Get root path
+        String rootPath = stateManager.getRootPath();
+        Log.d("STATE_DEBUG", "Root path: " + rootPath);
+        File rootDir = new File(rootPath);
+        Log.d("STATE_DEBUG", "Root exists: " + rootDir.exists());
+
+        // Get current directory from state
+        String savedPath = stateManager.getCurrentFolder();
+        Log.d("STATE_DEBUG", "Saved current folder: " + savedPath);
+
+        // Get playback state
+        PlaybackState playbackState = stateManager.getPlaybackState();
+        if (playbackState != null) {
+            Log.d("STATE_DEBUG", "Playback state exists: true");
+            Log.d("STATE_DEBUG", "  Current file: " + playbackState.getCurrentFilePath());
+            Log.d("STATE_DEBUG", "  Position: " + playbackState.getCurrentPosition());
+            Log.d("STATE_DEBUG", "  Is playing: " + playbackState.isPlaying());
+            Log.d("STATE_DEBUG", "  Last update: " + playbackState.getLastUpdateTime());
+
+            File lastPlayed = new File(playbackState.getCurrentFilePath());
+            Log.d("STATE_DEBUG", "  Last played file exists: " + lastPlayed.exists());
+            if (lastPlayed.exists()) {
+                Log.d("STATE_DEBUG", "  Last played parent: " + lastPlayed.getParent());
+            }
+        } else {
+            Log.d("STATE_DEBUG", "Playback state: null");
+        }
+
+        // Get folder states
+        Log.d("STATE_DEBUG", "Current directory: " + (currentDirectory != null ? currentDirectory.getAbsolutePath() : "null"));
+
+        // Get last selected file for current directory
+        if (currentDirectory != null) {
+            String lastSelected = stateManager.getLastSelectedFile(currentDirectory.getAbsolutePath());
+            Log.d("STATE_DEBUG", "Last selected file in current dir: " + lastSelected);
+        }
+
+        Log.d("STATE_DEBUG", "========================================");
     }
 }

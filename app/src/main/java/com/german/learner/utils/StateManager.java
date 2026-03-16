@@ -60,8 +60,7 @@ public class StateManager {
             currentState = new AppState();
             // Set default root paths for A1 and A2
             String defaultPath = Environment.getExternalStorageDirectory().getAbsolutePath();
-            currentState.getSettings().setPrimaryRootPath(defaultPath + "/A1");
-            currentState.getSettings().setSecondaryRootPath(defaultPath + "/A2");
+            currentState.getSettings().getRootPath();
             Log.d(TAG, "Created new default state");
         }
     }
@@ -210,31 +209,16 @@ public class StateManager {
 
     // ============== Settings Methods ==============
 
-    public void setPrimaryRootPath(String path) {
-        currentState.getSettings().setPrimaryRootPath(path);
+    public void setRootPath(String path) {
+        currentState.getSettings().setRootPath(path);
         saveState();
     }
 
-    public String getPrimaryRootPath() {
-        String path = currentState.getSettings().getPrimaryRootPath();
+    public String getRootPath() {
+        String path = currentState.getSettings().getRootPath();
         if (path == null || path.isEmpty()) {
-            // Return a sensible default
-            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A1";
-            Log.d(TAG, "Primary path was empty, using default: " + path);
-        }
-        return path;
-    }
-
-    public void setSecondaryRootPath(String path) {
-        currentState.getSettings().setSecondaryRootPath(path);
-        saveState();
-    }
-
-    public String getSecondaryRootPath() {
-        String path = currentState.getSettings().getSecondaryRootPath();
-        if (path == null || path.isEmpty()) {
-            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/A2";
-            Log.d(TAG, "Secondary path was empty, using default: " + path);
+            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/DeutscheCourse";
+            Log.d(TAG, "Root path was empty, using default: " + path);
         }
         return path;
     }
@@ -270,13 +254,31 @@ public class StateManager {
                         currentState.getCurrentPlayback().getCurrentFilePath() != null &&
                         !currentState.getCurrentPlayback().getCurrentFilePath().isEmpty();
                 boolean hasSettings = currentState.getSettings() != null &&
-                        currentState.getSettings().getPrimaryRootPath() != null &&
-                        !currentState.getSettings().getPrimaryRootPath().isEmpty();
+                        currentState.getSettings().getRootPath() != null &&
+                        !currentState.getSettings().getRootPath().isEmpty();
 
                 return hasFolderState || hasPlayback || hasSettings;
             }
             return true; // File exists, assume it has content
         }
         return false; // No config file
+    }
+
+    public String getCurrentFolder() {
+        if (currentState != null) {
+            String folder = currentState.getCurrentFolderPath();
+            if (folder != null && !folder.isEmpty()) {
+                return folder;
+            }
+        }
+        // Fallback to root path
+        return getRootPath();
+    }
+
+    public void setCurrentFolder(String folderPath) {
+        if (currentState != null && folderPath != null) {
+            currentState.setCurrentFolderPath(folderPath);
+            saveState();
+        }
     }
 }
