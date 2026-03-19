@@ -3,12 +3,11 @@
     android:layout_width="match_parent"
     android:layout_height="wrap_content"
     android:background="?android:attr/selectableItemBackground"
-    android:focusable="false"
-    android:focusableInTouchMode="false"
     android:gravity="center_vertical"
     android:minHeight="24dp"
     android:orientation="horizontal"
-    android:padding="4dp">
+    android:padding="4dp"
+    android:descendantFocusability="blocksDescendants">
 
     <!-- Filename - takes available space -->
     <TextView
@@ -18,21 +17,23 @@
         android:layout_weight="1"
         android:ellipsize="end"
         android:maxLines="1"
-        android:textSize="14sp" />
+        android:textSize="14sp"
+        android:focusable="false" android:clickable="false" />
 
     <!-- Tags container - now in same row, horizontal scrolling if needed -->
     <HorizontalScrollView
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
         android:layout_marginEnd="4dp"
-        android:scrollbars="none">
+        android:scrollbars="none"
+        android:focusable="false" android:clickable="false" >
 
         <LinearLayout
             android:id="@+id/tag_container"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:orientation="horizontal"
-            android:visibility="gone" />
+            android:focusable="false" android:clickable="false" />
     </HorizontalScrollView>
 
     <!-- Play count -->
@@ -66,6 +67,7 @@
         android:padding="1dp"
         android:text="Tag"
         android:textSize="7sp"
-        android:visibility="gone" />
+        android:visibility="gone"
+        android:focusable="false" />
 
 </LinearLayout>

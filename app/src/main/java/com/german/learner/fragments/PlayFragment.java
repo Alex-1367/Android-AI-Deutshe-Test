@@ -166,7 +166,9 @@ public class PlayFragment extends Fragment {
         fileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
+                Log.d("CLICK_DEBUG", "onItemClick called for position " + position);
                 File file = fileList.get(position);
+
                 if (file.isDirectory()) {
                     // For directories, show folder info
                     File[] files = file.listFiles();
@@ -183,6 +185,11 @@ public class PlayFragment extends Fragment {
                             "📁 " + file.getName() + "\n" +
                                     "Contains: " + itemCount + " items (" + mp3Count + " audio files)",
                             Toast.LENGTH_LONG).show();
+
+                    Log.d("PLAY_DEBUG", "CLICKED: " + file.getName() + " isFile=" + file.isFile() + " isAudio=" + isAudioFile(file));
+
+                    // Navigate to directory
+                    navigateToPath(file.getAbsolutePath());
                 } else {
                     // For MP3 files, show file size and duration
                     long fileSize = file.length();
@@ -216,18 +223,16 @@ public class PlayFragment extends Fragment {
                                     "Size: " + sizeStr + "\n" +
                                     "Duration: " + durationStr,
                             Toast.LENGTH_LONG).show();
-                }
 
-                Log.d("PLAY_DEBUG", "CLICKED: " + file.getName() + " isFile=" + file.isFile() + " isAudio=" + isAudioFile(file));
+                    Log.d("PLAY_DEBUG", "CLICKED: " + file.getName() + " isFile=" + file.isFile() + " isAudio=" + isAudioFile(file));
 
-                if (file.isDirectory()) {
-                    navigateToPath(file.getAbsolutePath());
-                } else if (isAudioFile(file)) {
-                    Log.d("PLAY_TEST", "CALLING playAudio for: " + file.getName());
-                    playAudio(file);
-                } else {
-                    Log.d("PLAY_TEST", "Not an audio file: " + file.getName());
-                    Toast.makeText(getContext(), "Not an MP3 file", Toast.LENGTH_SHORT).show();
+                    if (isAudioFile(file)) {
+                        Log.d("PLAY_TEST", "CALLING playAudio for: " + file.getName());
+                        playAudio(file);
+                    } else {
+                        Log.d("PLAY_TEST", "Not an audio file: " + file.getName());
+                        Toast.makeText(getContext(), "Not an MP3 file", Toast.LENGTH_SHORT).show();
+                    }
                 }
             }
         });
@@ -250,8 +255,11 @@ public class PlayFragment extends Fragment {
             public void onClick(View v) {
                 if (currentDirectory != null) {
                     File parent = currentDirectory.getParentFile();
-                    if (parent != null && !parent.getAbsolutePath().equals("/")) {
-                        navigateToPath(parent.getAbsolutePath());
+                    String rootPath = stateManager.getRootPath();
+                    if (!currentDirectory.getAbsolutePath().equals(rootPath)) {
+                        if (parent != null) {
+                            navigateToPath(parent.getAbsolutePath());
+                        }
                     }
                 }
             }
@@ -497,6 +505,15 @@ public class PlayFragment extends Fragment {
             }
 
             currentDirectory = file;
+            String rootPath = stateManager.getRootPath();
+            if (path.equals(rootPath)) {
+                navigateUpButton.setEnabled(false);
+                navigateUpButton.setAlpha(0.5f);
+                return;
+            } else {
+                navigateUpButton.setEnabled(true);
+                navigateUpButton.setAlpha(1.0f);
+            }
             currentPathTextView.setText(file.getAbsolutePath());
             loadFiles(file);
             stateManager.setCurrentFolder(file.getAbsolutePath());
