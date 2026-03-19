@@ -55,23 +55,28 @@ public class SettingsFragment extends Fragment {
                         if (result.getResultCode() == getActivity().RESULT_OK && result.getData() != null) {
                             Uri uri = result.getData().getData();
                             if (uri != null) {
-                                // Take persistable permission
+                                // Important for SD card persistence
                                 getActivity().getContentResolver().takePersistableUriPermission(uri,
                                         Intent.FLAG_GRANT_READ_URI_PERMISSION);
 
-                                // Get the path from URI - simplified version
-                                String path = uri.getPath();
-                                if (path != null) {
-                                    // Extract the actual path
-                                    if (path.contains(":")) {
-                                        String[] parts = path.split(":");
-                                        if (parts.length >= 2) {
-                                            String folderName = parts[1];
-                                            path = "/storage/emulated/0/" + folderName;
-                                            rootPathEditText.setText(path);
-                                        }
-                                    }
+                                String docId = android.provider.DocumentsContract.getTreeDocumentId(uri);
+                                String[] split = docId.split(":");
+                                String type = split[0];
+                                String relativePath = split.length > 1 ? split[1] : "";
+
+                                String finalPath;
+                                if ("primary".equalsIgnoreCase(type)) {
+                                    finalPath = Environment.getExternalStorageDirectory() + "/" + relativePath;
+                                } else {
+                                    // This handles the SD Card ID (e.g., 9C33-6BBD)
+                                    finalPath = "/storage/" + type + "/" + relativePath;
                                 }
+
+                                // Remove double slashes if any
+                                finalPath = finalPath.replace("//", "/");
+
+                                rootPathEditText.setText(finalPath);
+                                Log.d("SETTINGS_DEBUG", "SELECTED PHYSICAL PATH: " + finalPath);
                             }
                         }
                     });
@@ -126,17 +131,22 @@ public class SettingsFragment extends Fragment {
                     if (rootDir.exists()) {
                         stateManager.setRootPath(rootPath);
                         Log.d("SETTINGS", "Root path saved to StateManager");
+
+                         stateManager.saveState();
+
                     } else {
                         Log.d("SETTINGS", "Root directory does NOT exist: " + rootPath);
                         Toast.makeText(getContext(), "Root directory does not exist", Toast.LENGTH_LONG).show();
                     }
                 }
 
-                // Verify it was saved
                 Log.d("SETTINGS", "After save - Root: " + stateManager.getRootPath());
 
                 stateManager.setAutoResumePlayback(autoResumeSwitch.isChecked());
-                Toast.makeText(getContext(), "Settings saved", Toast.LENGTH_SHORT).show();
+
+                stateManager.saveState();
+
+                Toast.makeText(getContext(), "Settings saved to JSON", Toast.LENGTH_SHORT).show();
             }
         });
 
@@ -196,6 +206,8 @@ public class SettingsFragment extends Fragment {
 
     private void openDirectoryPicker() {
         Intent intent = new Intent(Intent.ACTION_OPEN_DOCUMENT_TREE);
+        intent.addFlags(Intent.FLAG_GRANT_PERSISTABLE_URI_PERMISSION);
+        intent.addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION);
         directoryPickerLauncher.launch(intent);
     }
 
@@ -274,7 +286,7 @@ public class SettingsFragment extends Fragment {
      * Suggest using SD card paths
      */
     private void suggestSdCardPaths(String sdCardRoot) {
-        String suggestedRoot = sdCardRoot + "/DeutscheCourse";
+        String suggestedRoot = sdCardRoot + "/_DeutscheCourse";
 
         new androidx.appcompat.app.AlertDialog.Builder(requireContext())
                 .setTitle("Use SD Card?")

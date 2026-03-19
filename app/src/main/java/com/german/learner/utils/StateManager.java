@@ -83,6 +83,11 @@ public class StateManager {
     }
 
     public void saveState() {
+        // DEBUG: Check what we are about to save
+        if (currentState != null && currentState.getSettings() != null) {
+            Log.d(TAG, "SAVING TO JSON - RootPath: " + currentState.getSettings().getRootPath());
+        }
+
         File tempFile = new File(context.getFilesDir(), STATE_FILE + ".tmp");
         try (PrintWriter writer = new PrintWriter(new FileWriter(tempFile))) {
             String json = gson.toJson(currentState);
@@ -99,7 +104,7 @@ public class StateManager {
                 }
                 tempFile.renameTo(stateFile);
             }
-            Log.d(TAG, "State saved successfully");
+            Log.d(TAG, "State saved successfully to: " + stateFile.getAbsolutePath());
         } catch (IOException e) {
             Log.e(TAG, "Error saving state", e);
         }
@@ -215,9 +220,17 @@ public class StateManager {
     }
 
     public String getRootPath() {
+        if (currentState == null || currentState.getSettings() == null) {
+            return Environment.getExternalStorageDirectory().getAbsolutePath() + "/_DeutscheCourse";
+        }
+
         String path = currentState.getSettings().getRootPath();
+
+        // DEBUG: See what is actually in the object
+        Log.d(TAG, "Retrieving RootPath from AppState: " + path);
+
         if (path == null || path.isEmpty()) {
-            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/DeutscheCourse";
+            path = Environment.getExternalStorageDirectory().getAbsolutePath() + "/_DeutscheCourse";
             Log.d(TAG, "Root path was empty, using default: " + path);
         }
         return path;
@@ -231,9 +244,6 @@ public class StateManager {
         currentState.getSettings().setAutoResumePlayback(autoResume);
         saveState();
     }
-
-    // ============== Utility Methods ==============
-
     public void clearAllData() {
         if (stateFile.exists()) {
             stateFile.delete();
@@ -281,4 +291,6 @@ public class StateManager {
             saveState();
         }
     }
+
+
 }

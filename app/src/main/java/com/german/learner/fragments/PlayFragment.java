@@ -254,12 +254,21 @@ public class PlayFragment extends Fragment {
             @Override
             public void onClick(View v) {
                 if (currentDirectory != null) {
-                    File parent = currentDirectory.getParentFile();
+                    String currentPath = currentDirectory.getAbsolutePath();
                     String rootPath = stateManager.getRootPath();
-                    if (!currentDirectory.getAbsolutePath().equals(rootPath)) {
+
+                    Log.d("NAV_CHECK", "Current: " + currentPath);
+                    Log.d("NAV_CHECK", "Root: " + rootPath);
+
+                    // Only navigate up if we are NOT at the root
+                    if (!currentPath.equals(rootPath)) {
+                        File parent = currentDirectory.getParentFile();
                         if (parent != null) {
                             navigateToPath(parent.getAbsolutePath());
                         }
+                    } else {
+                        Log.d("NAV_CHECK", "Navigation blocked: Already at Root.");
+                        Toast.makeText(getContext(), "At root directory", Toast.LENGTH_SHORT).show();
                     }
                 }
             }
@@ -497,30 +506,43 @@ public class PlayFragment extends Fragment {
     }
 
     private void navigateToPath(String path) {
-        File file = new File(path);
-        if (file.exists() && file.isDirectory()) {
-            // Save current folder state before leaving
-            if (currentDirectory != null) {
-                stateManager.saveFolderState(currentDirectory.getAbsolutePath(), fileListView);
+            File targetDir = new File(path);
+            if (!targetDir.exists() || !targetDir.isDirectory()) {
+                Log.e("PLAY_DEBUG", "Target directory does not exist: " + path);
+                return;
             }
 
-            currentDirectory = file;
+            currentDirectory = targetDir;
             String rootPath = stateManager.getRootPath();
+
+            // Debugging output as you requested
+            Log.d("NAV_DEBUG", "Navigating to: " + path);
+            Log.d("NAV_DEBUG", "Locked Root: " + rootPath);
+
+            // Update the UP button state
             if (path.equals(rootPath)) {
+                // We are at the root, user cannot go higher
+                Log.d("NAV_DEBUG", "At Root - Disabling UP button");
                 navigateUpButton.setEnabled(false);
-                navigateUpButton.setAlpha(0.5f);
-                return;
+                navigateUpButton.setAlpha(0.5f); // Visual feedback
             } else {
+                // We are in a subfolder, user can go back up to root
+                Log.d("NAV_DEBUG", "In Subfolder - Enabling UP button");
                 navigateUpButton.setEnabled(true);
                 navigateUpButton.setAlpha(1.0f);
             }
-            currentPathTextView.setText(file.getAbsolutePath());
-            loadFiles(file);
-            stateManager.setCurrentFolder(file.getAbsolutePath());
+
+            currentPathTextView.setText(path);
+
+            // Load the files for the new directory
+            loadFiles(targetDir);
+
+            currentPathTextView.setText(targetDir.getAbsolutePath());
+            loadFiles(targetDir);
+            stateManager.setCurrentFolder(targetDir.getAbsolutePath());
             // Restore scroll position for this folder
-            stateManager.restoreFolderState(file.getAbsolutePath(), fileListView);
+            stateManager.restoreFolderState(targetDir.getAbsolutePath(), fileListView);
         }
-    }
 
     private void loadFiles(File directory) {
         fileList.clear();
