@@ -51,4 +51,9 @@ public class TrackInfo {
             this.importanceLevel = importanceLevel;
         }
     }
+    public void clearTags() {
+        if (this.tags != null) {
+            this.tags.clear();
+        }
+    }
 }

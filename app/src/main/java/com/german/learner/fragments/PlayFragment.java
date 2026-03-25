@@ -381,7 +381,7 @@ public class PlayFragment extends Fragment {
                 ViewGroup.LayoutParams.MATCH_PARENT, 8));
         tagSelectorLayout.addView(space);
 
-        // SECOND ROW - Grammar + Importance + Close
+        // SECOND ROW - Grammar + Importance + Clear Tags + Close
         LinearLayout importanceRow = new LinearLayout(requireContext());
         importanceRow.setOrientation(LinearLayout.HORIZONTAL);
         importanceRow.setPadding(0, 0, 0, 0);
@@ -411,17 +411,17 @@ public class PlayFragment extends Fragment {
         });
         importanceRow.addView(grammarView);
 
-        // Star label
-        TextView starLabel = new TextView(requireContext());
-        starLabel.setText("★");
-        starLabel.setTextSize(20);
-        starLabel.setPadding(0, 0, 0, 0);
-        starLabel.setHeight(70);
-        starLabel.setWidth(70);
-        starLabel.setGravity(android.view.Gravity.CENTER);
-        starLabel.setTextColor(Color.parseColor("#FFC107"));
-        starLabel.setIncludeFontPadding(false);
-        importanceRow.addView(starLabel);
+        // Star label - REMOVED (no event handler)
+        // TextView starLabel = new TextView(requireContext());
+        // starLabel.setText("★");
+        // starLabel.setTextSize(20);
+        // starLabel.setPadding(0, 0, 0, 0);
+        // starLabel.setHeight(70);
+        // starLabel.setWidth(70);
+        // starLabel.setGravity(android.view.Gravity.CENTER);
+        // starLabel.setTextColor(Color.parseColor("#FFC107"));
+        // starLabel.setIncludeFontPadding(false);
+        // importanceRow.addView(starLabel);
 
         // Importance buttons 1-5
         for (int i = 1; i <= 5; i++) {
@@ -457,6 +457,44 @@ public class PlayFragment extends Fragment {
             });
             importanceRow.addView(levelView);
         }
+
+        // ADD CLEAR TAGS BUTTON
+        TextView clearTagsView = new TextView(requireContext());
+        clearTagsView.setText("O");
+        clearTagsView.setTextSize(12);
+        clearTagsView.setPadding(4, 2, 4, 2);
+        clearTagsView.setMinWidth(0);
+        clearTagsView.setMinHeight(0);
+        clearTagsView.setHeight(70);
+        clearTagsView.setWidth(70);
+        clearTagsView.setGravity(android.view.Gravity.CENTER);
+        clearTagsView.setBackgroundColor(Color.parseColor("#F44336")); // Red color
+        clearTagsView.setTextColor(Color.WHITE);
+        clearTagsView.setIncludeFontPadding(false);
+
+        clearTagsView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (selectedFileForTagging != null) {
+                    TrackInfo info = stateManager.getTrackInfo(selectedFileForTagging.getAbsolutePath());
+                    if (info != null && info.getTags() != null && !info.getTags().isEmpty()) {
+                        // Clear all tags
+                        info.clearTags();
+                        stateManager.updateTrackInfo(info);
+                        adapter.notifyDataSetChanged();
+                        tagSelectorLayout.setVisibility(View.GONE);
+                        Toast.makeText(requireContext(),
+                                "All tags removed from " + selectedFileForTagging.getName(),
+                                Toast.LENGTH_SHORT).show();
+                    } else {
+                        Toast.makeText(requireContext(),
+                                "No tags to remove",
+                                Toast.LENGTH_SHORT).show();
+                    }
+                }
+            }
+        });
+        importanceRow.addView(clearTagsView);
 
         // Close button in importance row
         TextView closeView = new TextView(requireContext());
@@ -663,6 +701,10 @@ public class PlayFragment extends Fragment {
             currentlyPlayingFile = file;
             isPlaying = true;
 
+            if (adapter != null) {
+                adapter.setCurrentlyPlayingFile(file.getAbsolutePath());
+            }
+
             // Update UI
             nowPlayingTextView.setText(file.getName());
             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
@@ -715,6 +757,10 @@ public class PlayFragment extends Fragment {
             playPauseButton.setImageResource(android.R.drawable.ic_media_play);
             playPauseButton.setBackgroundColor(Color.RED);
 
+            if (adapter != null && currentlyPlayingFile != null) {
+                adapter.setCurrentlyPlayingFile(currentlyPlayingFile.getAbsolutePath());
+            }
+
             if (currentlyPlayingFile != null) {
                 // Update indicator one last time with current position
                 int currentPos = mediaPlayer.getCurrentPosition() / 1000;
@@ -749,6 +795,10 @@ public class PlayFragment extends Fragment {
             playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
             playPauseButton.setBackgroundColor(Color.YELLOW);
 
+            if (adapter != null && currentlyPlayingFile != null) {
+                adapter.setCurrentlyPlayingFile(currentlyPlayingFile.getAbsolutePath());
+            }
+
             if (currentlyPlayingFile != null) {
                 stateManager.updatePlaybackState(
                         currentlyPlayingFile.getAbsolutePath(),
@@ -770,6 +820,10 @@ public class PlayFragment extends Fragment {
             File lastPlayed = new File(playbackState.getCurrentFilePath());
             if (lastPlayed.exists()) {
                 currentlyPlayingFile = lastPlayed;
+
+                if (adapter != null) {
+                    adapter.setCurrentlyPlayingFile(lastPlayed.getAbsolutePath());
+                }
 
                 // Check if we're in the correct directory
                 if (currentDirectory != null && lastPlayed.getParentFile() != null &&

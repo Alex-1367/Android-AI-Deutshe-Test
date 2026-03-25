@@ -2,6 +2,7 @@ package com.german.learner.adapters;
 
 import android.content.Context;
 import android.graphics.Color;
+import android.graphics.Typeface;
 import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
@@ -30,12 +31,18 @@ public class FileListAdapter extends BaseAdapter {
     private StateManager stateManager;
     private PlayFragment playFragment;
     private SimpleDateFormat dateFormat = new SimpleDateFormat("dd MMM yyyy HH:mm", Locale.getDefault());
+    private String currentlyPlayingPath = null;
 
     public FileListAdapter(Context context, List<File> files, StateManager stateManager, PlayFragment playFragment) {
         this.context = context;
         this.files = files;
         this.stateManager = stateManager;
         this.playFragment = playFragment;
+    }
+
+    public void setCurrentlyPlayingFile(String filePath) {
+        this.currentlyPlayingPath = filePath;
+        notifyDataSetChanged();
     }
 
     @Override
@@ -142,6 +149,16 @@ public class FileListAdapter extends BaseAdapter {
                 } else {
                     holder.playCountView.setVisibility(View.GONE);
                 }
+            }
+            boolean isCurrentlyPlaying = file.getAbsolutePath().equals(currentlyPlayingPath);
+            if (isCurrentlyPlaying) {
+                convertView.setBackgroundColor(Color.parseColor("#E3F2FD")); // Light blue background
+                holder.nameView.setTextColor(Color.parseColor("#1976D2")); // Darker blue text
+                holder.nameView.setTypeface(null, Typeface.BOLD);
+            } else {
+                convertView.setBackgroundColor(Color.TRANSPARENT);
+                holder.nameView.setTextColor(Color.BLACK);
+                holder.nameView.setTypeface(null, Typeface.NORMAL);
             }
         }
 
