@@ -3,7 +3,6 @@ package com.german.learner.fragments;
 import android.Manifest;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.media.MediaPlayer;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
@@ -42,6 +41,8 @@ import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
 
+import com.german.learner.adapters.MediaPlayerAdapter;
+
 public class PlayFragment extends Fragment {
 
     private static final String TAG = "PlayFragment";
@@ -59,13 +60,8 @@ public class PlayFragment extends Fragment {
     private FileListAdapter adapter;
 
     private StateManager stateManager;
-    private MediaPlayer mediaPlayer;
+    private MediaPlayerAdapter mediaPlayerAdapter;
     private File currentlyPlayingFile;
-    private boolean isPlaying = false;
-    private Handler handler = new Handler();
-    private Runnable updatePositionRunnable;
-
-    // Currently selected file for tagging
     private File selectedFileForTagging;
 
     @Nullable
@@ -163,6 +159,16 @@ public class PlayFragment extends Fragment {
         fileListView.setClickable(true);
         fileListView.setItemsCanFocus(false);
         fileListView.setFocusable(false);
+
+        // Initialize MediaPlayerAdapter
+        mediaPlayerAdapter = new MediaPlayerAdapter(
+                stateManager,
+                nowPlayingTextView,
+                playPauseButton,
+                positionIndicator,
+                adapter
+        );
+
         fileListView.setOnItemClickListener(new AdapterView.OnItemClickListener() {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
@@ -204,19 +210,7 @@ public class PlayFragment extends Fragment {
 
                     // Get duration if possible (requires MediaPlayer)
                     String durationStr = "Unknown";
-                    try {
-                        MediaPlayer mp = new MediaPlayer();
-                        mp.setDataSource(file.getAbsolutePath());
-                        mp.prepare();
-                        int duration = mp.getDuration() / 1000; // in seconds
-                        mp.release();
-
-                        int minutes = duration / 60;
-                        int seconds = duration % 60;
-                        durationStr = String.format(java.util.Locale.getDefault(), "%d:%02d", minutes, seconds);
-                    } catch (Exception e) {
-                        // Ignore duration errors
-                    }
+                    durationStr = MediaPlayerAdapter.getAudioDuration(file);
 
                     Toast.makeText(getContext(),
                             "🎵 " + file.getName() + "\n" +
@@ -277,50 +271,18 @@ public class PlayFragment extends Fragment {
         playPauseButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                Log.d("PLAY_TEST", "Play/Pause clicked, isPlaying=" + isPlaying);
-                if (mediaPlayer != null) {
-                    if (mediaPlayer.isPlaying()) {
-                        pauseAudio();
+                Log.d("PLAY_TEST", "Play/Pause clicked");
+                if (mediaPlayerAdapter.hasActivePlayer()) {
+                    if (mediaPlayerAdapter.isPlaying()) {
+                        mediaPlayerAdapter.pauseAudio();
                     } else {
-                        resumeAudio();
+                        mediaPlayerAdapter.resumeAudio();
                     }
                 } else if (currentlyPlayingFile != null) {
-                    playAudio(currentlyPlayingFile);
+                    mediaPlayerAdapter.playAudio(currentlyPlayingFile);
                 }
             }
         });
-
-        // Setup position update runnable
-        updatePositionRunnable = new Runnable() {
-            @Override
-            public void run() {
-                if (mediaPlayer != null && mediaPlayer.isPlaying() && currentlyPlayingFile != null) {
-                    int currentPos = mediaPlayer.getCurrentPosition() / 1000; // seconds
-                    int totalDur = mediaPlayer.getDuration() / 1000; // seconds
-
-                    // Format as minutes:seconds
-                    String currentStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
-                            currentPos / 60, currentPos % 60);
-                    String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
-                            totalDur / 60, totalDur % 60);
-
-                    // Update position indicator
-                    positionIndicator.setText(currentStr + "/" + totalStr);
-                    positionIndicator.setVisibility(View.VISIBLE);
-
-                    stateManager.updatePlaybackState(
-                            currentlyPlayingFile.getAbsolutePath(),
-                            mediaPlayer.getCurrentPosition(),
-                            true
-                    );
-                    stateManager.updateTrackPosition(
-                            currentlyPlayingFile.getAbsolutePath(),
-                            mediaPlayer.getCurrentPosition()
-                    );
-                    handler.postDelayed(this, 1000); // Update every second
-                }
-            }
-        };
     }
 
     private void setupTagSelector() {
@@ -442,6 +404,7 @@ public class PlayFragment extends Fragment {
         tagSelectorLayout.addView(actionRow);
         tagSelectorLayout.setVisibility(View.GONE);
     }
+
     public void showTagSelector(File file) {
         selectedFileForTagging = file;
         tagSelectorLayout.setVisibility(View.VISIBLE);
@@ -467,43 +430,43 @@ public class PlayFragment extends Fragment {
     }
 
     private void navigateToPath(String path) {
-            File targetDir = new File(path);
-            if (!targetDir.exists() || !targetDir.isDirectory()) {
-                Log.e("PLAY_DEBUG", "Target directory does not exist: " + path);
-                return;
-            }
-
-            currentDirectory = targetDir;
-            String rootPath = stateManager.getRootPath();
-
-            // Debugging output as you requested
-            Log.d("NAV_DEBUG", "Navigating to: " + path);
-            Log.d("NAV_DEBUG", "Locked Root: " + rootPath);
-
-            // Update the UP button state
-            if (path.equals(rootPath)) {
-                // We are at the root, user cannot go higher
-                Log.d("NAV_DEBUG", "At Root - Disabling UP button");
-                navigateUpButton.setEnabled(false);
-                navigateUpButton.setAlpha(0.5f); // Visual feedback
-            } else {
-                // We are in a subfolder, user can go back up to root
-                Log.d("NAV_DEBUG", "In Subfolder - Enabling UP button");
-                navigateUpButton.setEnabled(true);
-                navigateUpButton.setAlpha(1.0f);
-            }
-
-            currentPathTextView.setText(path);
-
-            // Load the files for the new directory
-            loadFiles(targetDir);
-
-            currentPathTextView.setText(targetDir.getAbsolutePath());
-            loadFiles(targetDir);
-            stateManager.setCurrentFolder(targetDir.getAbsolutePath());
-            // Restore scroll position for this folder
-            stateManager.restoreFolderState(targetDir.getAbsolutePath(), fileListView);
+        File targetDir = new File(path);
+        if (!targetDir.exists() || !targetDir.isDirectory()) {
+            Log.e("PLAY_DEBUG", "Target directory does not exist: " + path);
+            return;
         }
+
+        currentDirectory = targetDir;
+        String rootPath = stateManager.getRootPath();
+
+        // Debugging output as you requested
+        Log.d("NAV_DEBUG", "Navigating to: " + path);
+        Log.d("NAV_DEBUG", "Locked Root: " + rootPath);
+
+        // Update the UP button state
+        if (path.equals(rootPath)) {
+            // We are at the root, user cannot go higher
+            Log.d("NAV_DEBUG", "At Root - Disabling UP button");
+            navigateUpButton.setEnabled(false);
+            navigateUpButton.setAlpha(0.5f); // Visual feedback
+        } else {
+            // We are in a subfolder, user can go back up to root
+            Log.d("NAV_DEBUG", "In Subfolder - Enabling UP button");
+            navigateUpButton.setEnabled(true);
+            navigateUpButton.setAlpha(1.0f);
+        }
+
+        currentPathTextView.setText(path);
+
+        // Load the files for the new directory
+        loadFiles(targetDir);
+
+        currentPathTextView.setText(targetDir.getAbsolutePath());
+        loadFiles(targetDir);
+        stateManager.setCurrentFolder(targetDir.getAbsolutePath());
+        // Restore scroll position for this folder
+        stateManager.restoreFolderState(targetDir.getAbsolutePath(), fileListView);
+    }
 
     private void loadFiles(File directory) {
         fileList.clear();
@@ -597,142 +560,12 @@ public class PlayFragment extends Fragment {
     }
 
     public void playAudio(File file) {
-        Log.d("PLAY_TEST", "playAudio called for: " + file.getName());
-        try {
-            // Completely destroy old player
-            if (mediaPlayer != null) {
-                try {
-                    if (mediaPlayer.isPlaying()) {
-                        mediaPlayer.stop();
-                    }
-                } catch (IllegalStateException e) {
-                    // Ignore
-                }
-                mediaPlayer.release();
-                mediaPlayer = null;
-                handler.removeCallbacks(updatePositionRunnable);
-            }
+        currentlyPlayingFile = file;
+        mediaPlayerAdapter.playAudio(file);
 
-            // Create new player
-            mediaPlayer = new MediaPlayer();
-            mediaPlayer.setDataSource(file.getAbsolutePath());
-            mediaPlayer.prepare();
-            mediaPlayer.setLooping(true);
-            mediaPlayer.start();
-
-            // Update state
-            currentlyPlayingFile = file;
-            isPlaying = true;
-
-            if (adapter != null) {
-                adapter.setCurrentlyPlayingFile(file.getAbsolutePath());
-            }
-
-            // Update UI
-            nowPlayingTextView.setText(file.getName());
-            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-            playPauseButton.setBackgroundColor(Color.GREEN);
-
-            // Show position indicator
-            positionIndicator.setVisibility(View.VISIBLE);
-            int totalDur = mediaPlayer.getDuration() / 1000;
-            String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
-                    totalDur / 60, totalDur % 60);
-            positionIndicator.setText("0:00/" + totalStr);
-
-            // Update play count
-            stateManager.incrementPlayCount(file.getAbsolutePath());
-            stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), file.getName());
-
-            // Start position updates
-            handler.post(updatePositionRunnable);
-
-            // Simple completion listener
-            mediaPlayer.setOnCompletionListener(new MediaPlayer.OnCompletionListener() {
-                @Override
-                public void onCompletion(MediaPlayer mp) {
-                    isPlaying = false;
-                    nowPlayingTextView.setText("Finished: " + file.getName());
-                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-                    handler.removeCallbacks(updatePositionRunnable);
-
-                    // Reset position indicator
-                    positionIndicator.setText("0:00/" + totalStr);
-
-                    stateManager.updatePlaybackState(file.getAbsolutePath(), 0, false);
-                    stateManager.updateTrackPosition(file.getAbsolutePath(), 0);
-                }
-            });
-
-            Log.d("PLAY_DEBUG", "Now playing: " + file.getName());
-
-        } catch (IOException e) {
-            e.printStackTrace();
-            Toast.makeText(requireContext(), "Error playing: " + file.getName(), Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void pauseAudio() {
-        if (mediaPlayer != null && mediaPlayer.isPlaying()) {
-            mediaPlayer.pause();
-            isPlaying = false;
-            // Change to PLAY when paused
-            playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-            playPauseButton.setBackgroundColor(Color.RED);
-
-            if (adapter != null && currentlyPlayingFile != null) {
-                adapter.setCurrentlyPlayingFile(currentlyPlayingFile.getAbsolutePath());
-            }
-
-            if (currentlyPlayingFile != null) {
-                // Update indicator one last time with current position
-                int currentPos = mediaPlayer.getCurrentPosition() / 1000;
-                int totalDur = mediaPlayer.getDuration() / 1000;
-                String currentStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
-                        currentPos / 60, currentPos % 60);
-                String totalStr = String.format(java.util.Locale.getDefault(), "%d:%02d",
-                        totalDur / 60, totalDur % 60);
-                positionIndicator.setText(currentStr + "/" + totalStr);
-
-                stateManager.updatePlaybackState(
-                        currentlyPlayingFile.getAbsolutePath(),
-                        mediaPlayer.getCurrentPosition(),
-                        false
-                );
-                stateManager.updateTrackPosition(
-                        currentlyPlayingFile.getAbsolutePath(),
-                        mediaPlayer.getCurrentPosition()
-                );
-            }
-            handler.removeCallbacks(updatePositionRunnable);
-
-            Toast.makeText(requireContext(), "Paused", Toast.LENGTH_SHORT).show();
-        }
-    }
-
-    private void resumeAudio() {
-        if (mediaPlayer != null && !mediaPlayer.isPlaying()) {
-            mediaPlayer.start();
-            isPlaying = true;
-            // Change to PAUSE when playing
-            playPauseButton.setImageResource(android.R.drawable.ic_media_pause);
-            playPauseButton.setBackgroundColor(Color.YELLOW);
-
-            if (adapter != null && currentlyPlayingFile != null) {
-                adapter.setCurrentlyPlayingFile(currentlyPlayingFile.getAbsolutePath());
-            }
-
-            if (currentlyPlayingFile != null) {
-                stateManager.updatePlaybackState(
-                        currentlyPlayingFile.getAbsolutePath(),
-                        mediaPlayer.getCurrentPosition(),
-                        true
-                );
-            }
-            handler.post(updatePositionRunnable);
-
-            Toast.makeText(requireContext(), "Resumed", Toast.LENGTH_SHORT).show();
-        }
+        // Update play count and last selected file
+        stateManager.incrementPlayCount(file.getAbsolutePath());
+        stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), file.getName());
     }
 
     private void restorePlayingState() {
@@ -744,24 +577,15 @@ public class PlayFragment extends Fragment {
             if (lastPlayed.exists()) {
                 currentlyPlayingFile = lastPlayed;
 
-                if (adapter != null) {
-                    adapter.setCurrentlyPlayingFile(lastPlayed.getAbsolutePath());
-                }
+                mediaPlayerAdapter.restorePlaybackState(
+                        lastPlayed,
+                        playbackState.getCurrentPosition(),
+                        playbackState.isPlaying()
+                );
 
                 // Check if we're in the correct directory
                 if (currentDirectory != null && lastPlayed.getParentFile() != null &&
                         lastPlayed.getParentFile().getAbsolutePath().equals(currentDirectory.getAbsolutePath())) {
-
-                    String status = playbackState.isPlaying() ? "Paused at" : "Last played";
-                    long position = playbackState.getCurrentPosition();
-                    nowPlayingTextView.setText(String.format("%s: %s (%d sec)",
-                            status,
-                            lastPlayed.getName(),
-                            position / 1000));
-
-                    playPauseButton.setImageResource(android.R.drawable.ic_media_play);
-
-                    // Save as last selected for scrolling
                     stateManager.setLastSelectedFile(currentDirectory.getAbsolutePath(), lastPlayed.getName());
                 }
             }
@@ -777,23 +601,7 @@ public class PlayFragment extends Fragment {
         }
 
         // Save playback state
-        if (mediaPlayer != null && currentlyPlayingFile != null) {
-            stateManager.updatePlaybackState(
-                    currentlyPlayingFile.getAbsolutePath(),
-                    mediaPlayer.getCurrentPosition(),
-                    mediaPlayer.isPlaying()
-            );
-            stateManager.updateTrackPosition(
-                    currentlyPlayingFile.getAbsolutePath(),
-                    mediaPlayer.getCurrentPosition()
-            );
-
-            if (mediaPlayer.isPlaying()) {
-                mediaPlayer.pause();
-            }
-        }
-
-        handler.removeCallbacks(updatePositionRunnable);
+        mediaPlayerAdapter.savePlaybackState();
     }
 
     @Override
@@ -836,11 +644,9 @@ public class PlayFragment extends Fragment {
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mediaPlayer != null) {
-            mediaPlayer.release();
-            mediaPlayer = null;
+        if (mediaPlayerAdapter != null) {
+            mediaPlayerAdapter.releasePlayer();
         }
-        handler.removeCallbacksAndMessages(null);
     }
 
     public void refreshFileList() {
@@ -973,6 +779,7 @@ public class PlayFragment extends Fragment {
 
         Log.d("STATE_DEBUG", "========================================");
     }
+
     private TextView createTagButton(String text, int backgroundColor, int textColor, View.OnClickListener clickListener) {
         TextView button = new TextView(requireContext());
         button.setText(text);
