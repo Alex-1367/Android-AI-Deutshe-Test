@@ -324,45 +324,27 @@ public class PlayFragment extends Fragment {
     }
 
     private void setupTagSelector() {
-        // Clear existing views
         tagSelectorLayout.removeAllViews();
-
-        // Make the layout vertical (two rows) with minimal spacing
         tagSelectorLayout.setOrientation(LinearLayout.VERTICAL);
         tagSelectorLayout.setPadding(4, 4, 4, 4);
 
-        // FIRST ROW - Tags (without Grammar)
+        // FIRST ROW - Tags
         LinearLayout tagRow = new LinearLayout(requireContext());
         tagRow.setOrientation(LinearLayout.HORIZONTAL);
         tagRow.setHorizontalScrollBarEnabled(true);
         tagRow.setPadding(0, 0, 0, 0);
 
         String[] tags = {"Digits", "Words", "Dialog", "Dict"};
-        int[] colors = {
-                android.R.color.holo_red_dark,
-                android.R.color.holo_blue_dark,
-                android.R.color.holo_green_dark,
-                android.R.color.holo_orange_dark,
+        int[] tagColors = {
+                getResources().getColor(android.R.color.holo_red_dark),
+                getResources().getColor(android.R.color.holo_blue_dark),
+                getResources().getColor(android.R.color.holo_green_dark),
+                getResources().getColor(android.R.color.holo_orange_dark)
         };
 
         for (int i = 0; i < tags.length; i++) {
             final String tag = tags[i];
-            final int color = colors[i];
-
-            TextView tagView = new TextView(requireContext());
-            tagView.setText(tag);
-            tagView.setBackgroundColor(getResources().getColor(color));
-            tagView.setTextSize(16);
-            tagView.setPadding(8, 4, 8, 4);
-            tagView.setMinWidth(0);
-            tagView.setMinHeight(0);
-            tagView.setHeight(70);
-            tagView.setWidth(160);
-            tagView.setGravity(android.view.Gravity.CENTER);
-            tagView.setTextColor(Color.WHITE);
-            tagView.setIncludeFontPadding(false);
-
-            tagView.setOnClickListener(new View.OnClickListener() {
+            TextView tagButton = createTagButton(tag, tagColors[i], Color.WHITE, new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
                     if (selectedFileForTagging != null) {
@@ -371,152 +353,93 @@ public class PlayFragment extends Fragment {
                     }
                 }
             });
-            tagRow.addView(tagView);
+            tagRow.addView(tagButton);
         }
         tagSelectorLayout.addView(tagRow);
 
-        // Add spacing between rows
+        // Spacing between rows
         Space space = new Space(requireContext());
-        space.setLayoutParams(new LinearLayout.LayoutParams(
-                ViewGroup.LayoutParams.MATCH_PARENT, 8));
+        space.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 8));
         tagSelectorLayout.addView(space);
 
         // SECOND ROW - Grammar + Importance + Clear Tags + Close
-        LinearLayout importanceRow = new LinearLayout(requireContext());
-        importanceRow.setOrientation(LinearLayout.HORIZONTAL);
-        importanceRow.setPadding(0, 0, 0, 0);
+        LinearLayout actionRow = new LinearLayout(requireContext());
+        actionRow.setOrientation(LinearLayout.HORIZONTAL);
+        actionRow.setPadding(0, 0, 0, 0);
 
-        // Grammar button (now at the beginning of the row)
-        TextView grammarView = new TextView(requireContext());
-        grammarView.setText("Grammar");
-        grammarView.setBackgroundColor(getResources().getColor(android.R.color.holo_purple));
-        grammarView.setTextSize(16);
-        grammarView.setPadding(8, 4, 8, 4);
-        grammarView.setMinWidth(0);
-        grammarView.setMinHeight(0);
-        grammarView.setHeight(70);
-        grammarView.setWidth(160);
-        grammarView.setGravity(android.view.Gravity.CENTER);
-        grammarView.setTextColor(Color.WHITE);
-        grammarView.setIncludeFontPadding(false);
-
-        grammarView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (selectedFileForTagging != null) {
-                    toggleTag(selectedFileForTagging, "Grammar");
-                    tagSelectorLayout.setVisibility(View.GONE);
-                }
-            }
-        });
-        importanceRow.addView(grammarView);
-
-        // Star label - REMOVED (no event handler)
-        // TextView starLabel = new TextView(requireContext());
-        // starLabel.setText("★");
-        // starLabel.setTextSize(20);
-        // starLabel.setPadding(0, 0, 0, 0);
-        // starLabel.setHeight(70);
-        // starLabel.setWidth(70);
-        // starLabel.setGravity(android.view.Gravity.CENTER);
-        // starLabel.setTextColor(Color.parseColor("#FFC107"));
-        // starLabel.setIncludeFontPadding(false);
-        // importanceRow.addView(starLabel);
+        // Grammar button (wide)
+        TextView grammarButton = createTagButton("Grammar",
+                getResources().getColor(android.R.color.holo_purple),
+                Color.WHITE,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (selectedFileForTagging != null) {
+                            toggleTag(selectedFileForTagging, "Grammar");
+                            tagSelectorLayout.setVisibility(View.GONE);
+                        }
+                    }
+                });
+        actionRow.addView(grammarButton);
 
         // Importance buttons 1-5
         for (int i = 1; i <= 5; i++) {
             final int level = i;
-            TextView levelView = new TextView(requireContext());
-            levelView.setText(String.valueOf(i));
-            levelView.setTextSize(16);
-            levelView.setPadding(0, 0, 0, 0);
-            levelView.setMinWidth(0);
-            levelView.setMinHeight(0);
-            levelView.setHeight(70);
-            levelView.setWidth(70);
-            levelView.setGravity(android.view.Gravity.CENTER);
-            levelView.setBackgroundColor(Color.parseColor("#FFC107"));
-            levelView.setTextColor(Color.BLACK);
-            levelView.setIncludeFontPadding(false);
-
-            levelView.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (selectedFileForTagging != null) {
-                        stateManager.setTrackImportance(
-                                selectedFileForTagging.getAbsolutePath(),
-                                level
-                        );
-                        adapter.notifyDataSetChanged();
-                        tagSelectorLayout.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
-                                level + "★",
-                                Toast.LENGTH_SHORT).show();
-                    }
-                }
-            });
-            importanceRow.addView(levelView);
+            TextView importanceButton = createSmallButton(String.valueOf(i),
+                    Color.parseColor("#FFC107"),
+                    Color.BLACK,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (selectedFileForTagging != null) {
+                                stateManager.setTrackImportance(selectedFileForTagging.getAbsolutePath(), level);
+                                adapter.notifyDataSetChanged();
+                                tagSelectorLayout.setVisibility(View.GONE);
+                                Toast.makeText(requireContext(), level + "★", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+            actionRow.addView(importanceButton);
         }
 
-        // ADD CLEAR TAGS BUTTON
-        TextView clearTagsView = new TextView(requireContext());
-        clearTagsView.setText("O");
-        clearTagsView.setTextSize(12);
-        clearTagsView.setPadding(4, 2, 4, 2);
-        clearTagsView.setMinWidth(0);
-        clearTagsView.setMinHeight(0);
-        clearTagsView.setHeight(70);
-        clearTagsView.setWidth(70);
-        clearTagsView.setGravity(android.view.Gravity.CENTER);
-        clearTagsView.setBackgroundColor(Color.parseColor("#F44336")); // Red color
-        clearTagsView.setTextColor(Color.WHITE);
-        clearTagsView.setIncludeFontPadding(false);
-
-        clearTagsView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                if (selectedFileForTagging != null) {
-                    TrackInfo info = stateManager.getTrackInfo(selectedFileForTagging.getAbsolutePath());
-                    if (info != null && info.getTags() != null && !info.getTags().isEmpty()) {
-                        // Clear all tags
-                        info.clearTags();
-                        stateManager.updateTrackInfo(info);
-                        adapter.notifyDataSetChanged();
-                        tagSelectorLayout.setVisibility(View.GONE);
-                        Toast.makeText(requireContext(),
-                                "All tags removed from " + selectedFileForTagging.getName(),
-                                Toast.LENGTH_SHORT).show();
-                    } else {
-                        Toast.makeText(requireContext(),
-                                "No tags to remove",
-                                Toast.LENGTH_SHORT).show();
+        // Clear tags button
+        TextView clearTagsButton = createSmallButton("🗑",
+                Color.parseColor("#F44336"),
+                Color.WHITE,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        if (selectedFileForTagging != null) {
+                            TrackInfo info = stateManager.getTrackInfo(selectedFileForTagging.getAbsolutePath());
+                            if (info != null && info.getTags() != null && !info.getTags().isEmpty()) {
+                                info.clearTags();
+                                stateManager.updateTrackInfo(info);
+                                adapter.notifyDataSetChanged();
+                                tagSelectorLayout.setVisibility(View.GONE);
+                                Toast.makeText(requireContext(),
+                                        "All tags removed from " + selectedFileForTagging.getName(),
+                                        Toast.LENGTH_SHORT).show();
+                            } else {
+                                Toast.makeText(requireContext(), "No tags to remove", Toast.LENGTH_SHORT).show();
+                            }
+                        }
                     }
-                }
-            }
-        });
-        importanceRow.addView(clearTagsView);
+                });
+        actionRow.addView(clearTagsButton);
 
-        // Close button in importance row
-        TextView closeView = new TextView(requireContext());
-        closeView.setText("✕");
-        closeView.setTextSize(20);
-        closeView.setPadding(0, 0, 0, 0);
-        closeView.setHeight(70);
-        closeView.setWidth(70);
-        closeView.setGravity(android.view.Gravity.CENTER);
-        closeView.setBackgroundColor(Color.parseColor("#888888"));
-        closeView.setTextColor(Color.WHITE);
-        closeView.setIncludeFontPadding(false);
-        closeView.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                tagSelectorLayout.setVisibility(View.GONE);
-            }
-        });
-        importanceRow.addView(closeView);
+        // Close button
+        TextView closeButton = createSmallButton("✕",
+                Color.parseColor("#888888"),
+                Color.WHITE,
+                new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        tagSelectorLayout.setVisibility(View.GONE);
+                    }
+                });
+        actionRow.addView(closeButton);
 
-        tagSelectorLayout.addView(importanceRow);
-
+        tagSelectorLayout.addView(actionRow);
         tagSelectorLayout.setVisibility(View.GONE);
     }
     public void showTagSelector(File file) {
@@ -1049,5 +972,38 @@ public class PlayFragment extends Fragment {
         }
 
         Log.d("STATE_DEBUG", "========================================");
+    }
+    private TextView createTagButton(String text, int backgroundColor, int textColor, View.OnClickListener clickListener) {
+        TextView button = new TextView(requireContext());
+        button.setText(text);
+        button.setBackgroundColor(backgroundColor);
+        button.setTextSize(16);
+        button.setPadding(8, 4, 8, 4);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
+        button.setHeight(70);
+        button.setWidth(160);
+        button.setGravity(android.view.Gravity.CENTER);
+        button.setTextColor(textColor);
+        button.setIncludeFontPadding(false);
+        button.setOnClickListener(clickListener);
+        return button;
+    }
+
+    private TextView createSmallButton(String text, int backgroundColor, int textColor, View.OnClickListener clickListener) {
+        TextView button = new TextView(requireContext());
+        button.setText(text);
+        button.setTextSize(12);
+        button.setPadding(4, 2, 4, 2);
+        button.setMinWidth(0);
+        button.setMinHeight(0);
+        button.setHeight(70);
+        button.setWidth(70);
+        button.setGravity(android.view.Gravity.CENTER);
+        button.setBackgroundColor(backgroundColor);
+        button.setTextColor(textColor);
+        button.setIncludeFontPadding(false);
+        button.setOnClickListener(clickListener);
+        return button;
     }
 }
