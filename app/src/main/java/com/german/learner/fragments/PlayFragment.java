@@ -27,6 +27,7 @@ import androidx.fragment.app.Fragment;
 
 import com.german.learner.MainActivity;
 import com.german.learner.R;
+import com.german.learner.adapters.DynamicButtonAdapter;
 import com.german.learner.adapters.FileListAdapter;
 import com.german.learner.models.PlaybackState;
 import com.german.learner.models.TrackInfo;
@@ -49,7 +50,7 @@ public class PlayFragment extends Fragment {
 
     private TextView currentPathTextView;
     private ListView fileListView;
-    private Button navigateUpButton;
+    private ImageButton navigateUpButton;
     private ImageButton playPauseButton;
     private TextView nowPlayingTextView;
     private LinearLayout tagSelectorLayout;
@@ -63,13 +64,13 @@ public class PlayFragment extends Fragment {
     private MediaPlayerAdapter mediaPlayerAdapter;
     private File currentlyPlayingFile;
     private File selectedFileForTagging;
+    private DynamicButtonAdapter buttonAdapter;
 
     @Nullable
     @Override
     public View onCreateView(@NonNull LayoutInflater inflater, @Nullable ViewGroup container,
                              @Nullable Bundle savedInstanceState) {
         View view = inflater.inflate(R.layout.fragment_play, container, false);
-
         currentPathTextView = view.findViewById(R.id.current_path);
         fileListView = view.findViewById(R.id.file_list);
         navigateUpButton = view.findViewById(R.id.navigate_up);
@@ -77,7 +78,7 @@ public class PlayFragment extends Fragment {
         nowPlayingTextView = view.findViewById(R.id.now_playing);
         tagSelectorLayout = view.findViewById(R.id.tag_selector);
         positionIndicator = view.findViewById(R.id.position_indicator);
-
+        buttonAdapter = new DynamicButtonAdapter(requireContext());
         stateManager = ((MainActivity) requireActivity()).getStateManager();
 
         setupViews();
@@ -306,15 +307,16 @@ public class PlayFragment extends Fragment {
 
         for (int i = 0; i < tags.length; i++) {
             final String tag = tags[i];
-            TextView tagButton = createTagButton(tag, tagColors[i], Color.WHITE, new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (selectedFileForTagging != null) {
-                        toggleTag(selectedFileForTagging, tag);
-                        tagSelectorLayout.setVisibility(View.GONE);
-                    }
-                }
-            });
+            TextView tagButton = buttonAdapter.createLargeButton(tag, tagColors[i], Color.WHITE,
+                    new View.OnClickListener() {
+                        @Override
+                        public void onClick(View v) {
+                            if (selectedFileForTagging != null) {
+                                toggleTag(selectedFileForTagging, tag);
+                                tagSelectorLayout.setVisibility(View.GONE);
+                            }
+                        }
+                    });
             tagRow.addView(tagButton);
         }
         tagSelectorLayout.addView(tagRow);
@@ -330,7 +332,7 @@ public class PlayFragment extends Fragment {
         actionRow.setPadding(0, 0, 0, 0);
 
         // Grammar button (wide)
-        TextView grammarButton = createTagButton("Grammar",
+        TextView grammarButton = buttonAdapter.createLargeButton("Grammar",
                 getResources().getColor(android.R.color.holo_purple),
                 Color.WHITE,
                 new View.OnClickListener() {
@@ -347,7 +349,7 @@ public class PlayFragment extends Fragment {
         // Importance buttons 1-5
         for (int i = 1; i <= 5; i++) {
             final int level = i;
-            TextView importanceButton = createSmallButton(String.valueOf(i),
+            TextView importanceButton = buttonAdapter.createSmallButton(String.valueOf(i),
                     Color.parseColor("#FFC107"),
                     Color.BLACK,
                     new View.OnClickListener() {
@@ -365,7 +367,8 @@ public class PlayFragment extends Fragment {
         }
 
         // Clear tags button
-        TextView clearTagsButton = createSmallButton("🗑",
+// Clear all button - removes tags, resets importance, and resets play count
+        TextView clearTagsButton = buttonAdapter.createSmallButton("🗑",
                 Color.parseColor("#F44336"),
                 Color.WHITE,
                 new View.OnClickListener() {
@@ -373,16 +376,35 @@ public class PlayFragment extends Fragment {
                     public void onClick(View v) {
                         if (selectedFileForTagging != null) {
                             TrackInfo info = stateManager.getTrackInfo(selectedFileForTagging.getAbsolutePath());
-                            if (info != null && info.getTags() != null && !info.getTags().isEmpty()) {
-                                info.clearTags();
-                                stateManager.updateTrackInfo(info);
-                                adapter.notifyDataSetChanged();
-                                tagSelectorLayout.setVisibility(View.GONE);
-                                Toast.makeText(requireContext(),
-                                        "All tags removed from " + selectedFileForTagging.getName(),
-                                        Toast.LENGTH_SHORT).show();
-                            } else {
-                                Toast.makeText(requireContext(), "No tags to remove", Toast.LENGTH_SHORT).show();
+                            if (info != null) {
+                                boolean hadTags = info.getTags() != null && !info.getTags().isEmpty();
+                                boolean hadImportance = info.getImportanceLevel() > 1;
+                                boolean hadPlayCount = info.getPlayCount() > 0;
+
+                                if (hadTags || hadImportance || hadPlayCount) {
+                                    // Clear all tags
+                                    info.clearTags();
+                                    // Reset importance to default level 1
+                                    info.setImportanceLevel(1);
+                                    // Reset play count to 0
+                                    info.setPlayCount(0);
+                                    stateManager.updateTrackInfo(info);
+                                    adapter.notifyDataSetChanged();
+                                    tagSelectorLayout.setVisibility(View.GONE);
+
+                                    // Build detailed toast message
+                                    StringBuilder message = new StringBuilder("Reset: ");
+                                    if (hadTags) message.append("tags ");
+                                    if (hadImportance) message.append("importance ");
+                                    if (hadPlayCount) message.append("play count");
+                                    Toast.makeText(requireContext(),
+                                            message.toString().trim(),
+                                            Toast.LENGTH_LONG).show();
+                                } else {
+                                    Toast.makeText(requireContext(),
+                                            "Nothing to reset (all values already at default)",
+                                            Toast.LENGTH_LONG).show();
+                                }
                             }
                         }
                     }
@@ -390,7 +412,7 @@ public class PlayFragment extends Fragment {
         actionRow.addView(clearTagsButton);
 
         // Close button
-        TextView closeButton = createSmallButton("✕",
+        TextView closeButton = buttonAdapter.createSmallButton("✕",
                 Color.parseColor("#888888"),
                 Color.WHITE,
                 new View.OnClickListener() {
@@ -778,39 +800,5 @@ public class PlayFragment extends Fragment {
         }
 
         Log.d("STATE_DEBUG", "========================================");
-    }
-
-    private TextView createTagButton(String text, int backgroundColor, int textColor, View.OnClickListener clickListener) {
-        TextView button = new TextView(requireContext());
-        button.setText(text);
-        button.setBackgroundColor(backgroundColor);
-        button.setTextSize(16);
-        button.setPadding(8, 4, 8, 4);
-        button.setMinWidth(0);
-        button.setMinHeight(0);
-        button.setHeight(70);
-        button.setWidth(160);
-        button.setGravity(android.view.Gravity.CENTER);
-        button.setTextColor(textColor);
-        button.setIncludeFontPadding(false);
-        button.setOnClickListener(clickListener);
-        return button;
-    }
-
-    private TextView createSmallButton(String text, int backgroundColor, int textColor, View.OnClickListener clickListener) {
-        TextView button = new TextView(requireContext());
-        button.setText(text);
-        button.setTextSize(12);
-        button.setPadding(4, 2, 4, 2);
-        button.setMinWidth(0);
-        button.setMinHeight(0);
-        button.setHeight(70);
-        button.setWidth(70);
-        button.setGravity(android.view.Gravity.CENTER);
-        button.setBackgroundColor(backgroundColor);
-        button.setTextColor(textColor);
-        button.setIncludeFontPadding(false);
-        button.setOnClickListener(clickListener);
-        return button;
     }
 }

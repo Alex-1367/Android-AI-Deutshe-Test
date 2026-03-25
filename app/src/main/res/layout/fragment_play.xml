@@ -25,11 +25,14 @@
         android:padding="8dp"
         android:gravity="center_vertical">
 
-        <Button
+        <ImageButton
             android:id="@+id/navigate_up"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:text="↑ Up"
+            android:layout_width="36dp"
+            android:layout_height="36dp"
+            android:src="@android:drawable/ic_menu_upload"
+            android:rotation="0"
+            android:background="?attr/selectableItemBackgroundBorderless"
+            android:padding="4dp"
             android:layout_weight="0" />
 
         <TextView
